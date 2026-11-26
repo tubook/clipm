@@ -213,23 +213,20 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
                         ),
                       ),
                     ),
-                    // Right Pane (60%): Full Preview + Status Footer
+                    // Right Pane (60%): Full Preview
                     Expanded(
                       flex: 60,
-                      child: Column(
-                        children: [
-                          Expanded(child: PreviewPane(item: selectedItem)),
-                          StatusFooter(item: selectedItem),
-                        ],
-                      ),
+                      child: PreviewPane(item: selectedItem),
                     ),
                   ],
                 ),
-                ),
-              ],
-            ),
+              ),
+              // Full-width bottom status bar
+              StatusFooter(item: selectedItem),
+            ],
           ),
         ),
+      ),
       ),
     );
   }

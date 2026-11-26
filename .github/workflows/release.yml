@@ -50,19 +50,21 @@ jobs:
           DMG_OUT="dist/clipm-${VERSION}-macos.dmg"
           VOL_ICON="build/macos/Build/Products/Release/clipm.app/Contents/Resources/AppIcon.icns"
 
-          # Combine 1x (660x392) and @2x (1320x784) into a native Retina multi-res TIFF for Finder
-          tiffutil -cathidpicheck macos/dmg/dmg_background.png macos/dmg/dmg_background@2x.png -out dmg_background.tiff
+          # Render native Apple SF Pro / SF Mono / SF Symbols 1x & @2x backgrounds on macOS
+          mkdir -p dmg_bg_out
+          swift macos/dmg/render_dmg_bg.swift dmg_bg_out
+          tiffutil -cathidpicheck dmg_bg_out/dmg_background.png dmg_bg_out/dmg_background@2x.png -out dmg_background.tiff
 
           create-dmg \
             --volname "clipm" \
             --volicon "${VOL_ICON}" \
             --background "dmg_background.tiff" \
             --window-pos 200 120 \
-            --window-size 660 420 \
+            --window-size 660 448 \
             --icon-size 112 \
-            --icon "clipm.app" 180 195 \
+            --icon "clipm.app" 180 200 \
             --hide-extension "clipm.app" \
-            --app-drop-link 480 195 \
+            --app-drop-link 480 200 \
             --no-internet-enable \
             "${DMG_OUT}" \
             "dmg_stage/"
