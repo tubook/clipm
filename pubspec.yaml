@@ -21,7 +21,7 @@ dependencies:
 
   # Desktop System Integration
   window_manager: ^0.4.3
-  hotkey_manager: ^0.2.3
+  hotkey_manager: ^0.4.1
   tray_manager: ^0.3.2
 
   # Utilities
