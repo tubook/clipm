@@ -145,27 +145,34 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
         items.isEmpty ? 0 : rawSelectedIndex.clamp(0, items.length - 1);
     final selectedItem = items.isEmpty ? null : items[selectedIndex];
 
-    final cornerRadius = Platform.isMacOS ? 16.0 : 10.0;
-    final outerRadius = BorderRadius.circular(cornerRadius);
+    // ContinuousRectangleBorder implements Apple's smooth superellipse (Squircle)
+    // curve. Its radius parameter maps ~2.2x to a standard circular radius.
+    final squircleRadius = Platform.isMacOS ? 36.0 : 24.0;
+    final squircleShape = ContinuousRectangleBorder(
+      borderRadius: BorderRadius.circular(squircleRadius),
+    );
+    final squircleBorderShape = ContinuousRectangleBorder(
+      borderRadius: BorderRadius.circular(squircleRadius),
+      side: BorderSide(
+        color: OmarchyTheme.borderActive.withValues(alpha: 0.9),
+        width: 1,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
         padding: const EdgeInsets.all(0.5),
         child: Container(
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: OmarchyTheme.bg,
-            borderRadius: outerRadius,
+            shape: squircleShape,
           ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: outerRadius,
-            border: Border.all(
-              color: OmarchyTheme.borderActive.withValues(alpha: 0.9),
-              width: 1,
-            ),
+          foregroundDecoration: ShapeDecoration(
+            shape: squircleBorderShape,
           ),
-          child: ClipRRect(
-            borderRadius: outerRadius,
+          child: ClipPath(
+            clipper: ShapeBorderClipper(shape: squircleShape),
             child: Column(
             children: [
               SearchHeader(
