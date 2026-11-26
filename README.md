@@ -12,6 +12,10 @@ A local-first, zero-account, keyboard-driven desktop clipboard history manager i
 [![CI](https://img.shields.io/github/actions/workflow/status/tubook/clipm/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/tubook/clipm/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
+<p align="center">
+  <img src="docs/images/demo.gif" width="820" alt="clipm demo preview" />
+</p>
+
 ## Features (v1.0 MVP)
 - **100% Local**: SQLite (Drift) + FTS5 trigram full-text search (English & CJK substrings); images stored content-addressed under `<ApplicationSupport>/images/`.
 - **Seamless Paste**: Captures previous foreground window before showing overlay, writes back to OS clipboard with loop prevention, hides overlay, restores focus, and sends `Cmd+V` (macOS) / `Ctrl+V` (Windows).
