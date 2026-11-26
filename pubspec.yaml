@@ -17,7 +17,7 @@ dependencies:
   # Local Database (Drift + SQLite with FTS5 enabled via sqlite3_flutter_libs)
   drift: ^2.22.1
   sqlite3_flutter_libs: ^0.5.28
-  sqlite3: ^2.6.0
+  sqlite3: ^3.9.2
 
   # Desktop System Integration
   window_manager: ^0.4.3
