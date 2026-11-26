@@ -50,16 +50,19 @@ jobs:
           DMG_OUT="dist/clipm-${VERSION}-macos.dmg"
           VOL_ICON="build/macos/Build/Products/Release/clipm.app/Contents/Resources/AppIcon.icns"
 
+          # Combine 1x (660x392) and @2x (1320x784) into a native Retina multi-res TIFF for Finder
+          tiffutil -cathidpicheck macos/dmg/dmg_background.png macos/dmg/dmg_background@2x.png -out dmg_background.tiff
+
           create-dmg \
             --volname "clipm" \
             --volicon "${VOL_ICON}" \
-            --background "macos/dmg/dmg_background.png" \
+            --background "dmg_background.tiff" \
             --window-pos 200 120 \
-            --window-size 660 400 \
+            --window-size 660 420 \
             --icon-size 112 \
-            --icon "clipm.app" 180 205 \
+            --icon "clipm.app" 180 195 \
             --hide-extension "clipm.app" \
-            --app-drop-link 480 205 \
+            --app-drop-link 480 195 \
             --no-internet-enable \
             "${DMG_OUT}" \
             "dmg_stage/"
