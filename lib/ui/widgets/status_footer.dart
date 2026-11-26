@@ -72,7 +72,7 @@ class StatusFooter extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            '↵ paste  ⇧↵ plain  $pinKey pin  ⌃D del  esc close',
+            '↵ paste · ⇧↵ plain · $pinKey pin · ⌃D del · esc',
             style: OmarchyTheme.mono(
               size: 10.5,
               color: OmarchyTheme.textMuted,

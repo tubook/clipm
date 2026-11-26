@@ -145,26 +145,28 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
         items.isEmpty ? 0 : rawSelectedIndex.clamp(0, items.length - 1);
     final selectedItem = items.isEmpty ? null : items[selectedIndex];
 
-    final cornerRadius = Platform.isMacOS ? 12.0 : 8.0;
+    final cornerRadius = Platform.isMacOS ? 16.0 : 10.0;
     final outerRadius = BorderRadius.circular(cornerRadius);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          color: OmarchyTheme.bg,
-          borderRadius: outerRadius,
-        ),
-        foregroundDecoration: BoxDecoration(
-          borderRadius: outerRadius,
-          border: Border.all(
-            color: OmarchyTheme.borderActive.withValues(alpha: 0.85),
-            width: 1,
+      body: Padding(
+        padding: const EdgeInsets.all(0.5),
+        child: Container(
+          decoration: BoxDecoration(
+            color: OmarchyTheme.bg,
+            borderRadius: outerRadius,
           ),
-        ),
-        child: ClipRRect(
-          borderRadius: outerRadius,
-          child: Column(
+          foregroundDecoration: BoxDecoration(
+            borderRadius: outerRadius,
+            border: Border.all(
+              color: OmarchyTheme.borderActive.withValues(alpha: 0.9),
+              width: 1,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: outerRadius,
+            child: Column(
             children: [
               SearchHeader(
                 controller: _searchController,
@@ -216,8 +218,9 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
                     ),
                   ],
                 ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

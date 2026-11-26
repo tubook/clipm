@@ -79,6 +79,7 @@ class _HistoryListPaneState extends State<HistoryListPane> {
       controller: _scrollController,
       child: ListView.builder(
         controller: _scrollController,
+        padding: const EdgeInsets.symmetric(vertical: 4),
         itemExtent: HistoryListPane.rowHeight,
         itemCount: widget.items.length,
         itemBuilder: (context, index) {

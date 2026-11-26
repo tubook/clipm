@@ -49,7 +49,6 @@ class WindowControllerService with WindowListener, TrayListener {
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: true,
-      titleBarStyle: TitleBarStyle.hidden,
       alwaysOnTop: true,
     );
 
