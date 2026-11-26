@@ -145,67 +145,80 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
         items.isEmpty ? 0 : rawSelectedIndex.clamp(0, items.length - 1);
     final selectedItem = items.isEmpty ? null : items[selectedIndex];
 
+    final cornerRadius = Platform.isMacOS ? 12.0 : 8.0;
+    final outerRadius = BorderRadius.circular(cornerRadius);
+
     return Scaffold(
-      backgroundColor: OmarchyTheme.bg,
+      backgroundColor: Colors.transparent,
       body: Container(
         decoration: BoxDecoration(
           color: OmarchyTheme.bg,
-          border: Border.all(color: OmarchyTheme.borderActive, width: 1),
+          borderRadius: outerRadius,
         ),
-        child: Column(
-          children: [
-            SearchHeader(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              matchedCount: items.length,
-              totalCount: totalCount,
-              onChanged: (value) {
-                ref.read(searchQueryProvider.notifier).state = value;
-                ref.read(selectedIndexProvider.notifier).state = 0;
-              },
-            ),
-            Expanded(
-              child: Row(
-                children: [
-                  // Left Pane (40%): Compact History List
-                  Expanded(
-                    flex: 40,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: OmarchyTheme.surface,
-                        border: Border(
-                          right: BorderSide(color: OmarchyTheme.border, width: 1),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: outerRadius,
+          border: Border.all(
+            color: OmarchyTheme.borderActive.withValues(alpha: 0.85),
+            width: 1,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: outerRadius,
+          child: Column(
+            children: [
+              SearchHeader(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                matchedCount: items.length,
+                totalCount: totalCount,
+                onChanged: (value) {
+                  ref.read(searchQueryProvider.notifier).state = value;
+                  ref.read(selectedIndexProvider.notifier).state = 0;
+                },
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    // Left Pane (40%): Compact History List
+                    Expanded(
+                      flex: 40,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: OmarchyTheme.surface,
+                          border: Border(
+                            right: BorderSide(color: OmarchyTheme.border, width: 1),
+                          ),
+                        ),
+                        child: HistoryListPane(
+                          items: items,
+                          selectedIndex: selectedIndex,
+                          onSelect: (index) {
+                            ref.read(selectedIndexProvider.notifier).state = index;
+                            _searchFocusNode.requestFocus();
+                          },
+                          onActivate: (item) {
+                            ref
+                                .read(windowControllerServiceProvider)
+                                .pasteItem(item, forcePlainText: false);
+                          },
                         ),
                       ),
-                      child: HistoryListPane(
-                        items: items,
-                        selectedIndex: selectedIndex,
-                        onSelect: (index) {
-                          ref.read(selectedIndexProvider.notifier).state = index;
-                          _searchFocusNode.requestFocus();
-                        },
-                        onActivate: (item) {
-                          ref
-                              .read(windowControllerServiceProvider)
-                              .pasteItem(item, forcePlainText: false);
-                        },
+                    ),
+                    // Right Pane (60%): Full Preview + Status Footer
+                    Expanded(
+                      flex: 60,
+                      child: Column(
+                        children: [
+                          Expanded(child: PreviewPane(item: selectedItem)),
+                          StatusFooter(item: selectedItem),
+                        ],
                       ),
                     ),
-                  ),
-                  // Right Pane (60%): Full Preview + Status Footer
-                  Expanded(
-                    flex: 60,
-                    child: Column(
-                      children: [
-                        Expanded(child: PreviewPane(item: selectedItem)),
-                        StatusFooter(item: selectedItem),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -34,6 +34,9 @@ jobs:
       - name: Build macOS release
         run: flutter build macos --release
 
+      - name: Install create-dmg
+        run: brew install create-dmg
+
       - name: Package macOS DMG & ZIP
         shell: bash
         run: |
@@ -43,9 +46,24 @@ jobs:
           fi
           mkdir -p dist dmg_stage
           cp -R build/macos/Build/Products/Release/clipm.app dmg_stage/
-          ln -s /Applications dmg_stage/Applications
 
-          hdiutil create -volname "clipm" -srcfolder dmg_stage -ov -format UDZO "dist/clipm-${VERSION}-macos.dmg"
+          DMG_OUT="dist/clipm-${VERSION}-macos.dmg"
+          VOL_ICON="build/macos/Build/Products/Release/clipm.app/Contents/Resources/AppIcon.icns"
+
+          create-dmg \
+            --volname "clipm" \
+            --volicon "${VOL_ICON}" \
+            --background "macos/dmg/dmg_background.png" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 112 \
+            --icon "clipm.app" 180 205 \
+            --hide-extension "clipm.app" \
+            --app-drop-link 480 205 \
+            --no-internet-enable \
+            "${DMG_OUT}" \
+            "dmg_stage/"
+
           ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/clipm.app "dist/clipm-${VERSION}-macos.zip"
 
       - name: Upload macOS artifacts
@@ -65,7 +83,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
+          cache: false
 
       - name: Install dependencies
         run: flutter pub get

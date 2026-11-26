@@ -57,8 +57,8 @@ class OmarchyTheme {
   static ThemeData build() {
     return ThemeData(
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: bg,
-      canvasColor: bg,
+      scaffoldBackgroundColor: Colors.transparent,
+      canvasColor: Colors.transparent,
       dividerColor: border,
       fontFamily: monoFontFamily,
       colorScheme: const ColorScheme.dark(

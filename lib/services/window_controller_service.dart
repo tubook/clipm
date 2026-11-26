@@ -55,6 +55,8 @@ class WindowControllerService with WindowListener, TrayListener {
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.setAsFrameless();
+      await windowManager.setBackgroundColor(Colors.transparent);
+      await windowManager.setHasShadow(true);
       await windowManager.setResizable(false);
       await windowManager.setMinimizable(false);
       await windowManager.setMaximizable(false);

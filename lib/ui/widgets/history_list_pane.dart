@@ -144,44 +144,50 @@ class _HistoryRow extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       onDoubleTap: onDoubleTap,
-      child: Container(
-        color: bgColor,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 14,
-              child: Text(
-                _glyph(),
-                style: OmarchyTheme.mono(
-                  size: 12,
-                  weight: FontWeight.w700,
-                  color: glyphColor,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+        child: Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 14,
+                child: Text(
+                  _glyph(),
+                  style: OmarchyTheme.mono(
+                    size: 12,
+                    weight: FontWeight.w700,
+                    color: glyphColor,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                _summaryText(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: OmarchyTheme.mono(
-                  size: 12,
-                  weight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: fgColor,
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _summaryText(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: OmarchyTheme.mono(
+                    size: 12,
+                    weight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: fgColor,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              TimeUtils.formatRelative(item.lastUsedAt),
-              style: OmarchyTheme.mono(
-                size: 11,
-                color: metaColor,
+              const SizedBox(width: 8),
+              Text(
+                TimeUtils.formatRelative(item.lastUsedAt),
+                style: OmarchyTheme.mono(
+                  size: 11,
+                  color: metaColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
