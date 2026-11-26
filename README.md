@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icons/app_icon.png" width="128" height="128" alt="clipm icon" />
+</p>
+
 # clipm
 
 A local-first, zero-account, keyboard-driven desktop clipboard history manager inspired by Omarchy's high-contrast monospace aesthetic.
