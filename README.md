@@ -9,6 +9,8 @@ A local-first, zero-account, keyboard-driven desktop clipboard history manager i
 [![Download Latest Release](https://img.shields.io/github/v/release/tubook/clipm?label=Download%20Latest&style=for-the-badge&color=0E1014)](https://github.com/tubook/clipm/releases/latest)
 [![macOS DMG](https://img.shields.io/badge/macOS-Download%20.dmg-79C0FF?style=for-the-badge&logo=apple&logoColor=0E1014)](https://github.com/tubook/clipm/releases/latest)
 [![Windows x64 ZIP](https://img.shields.io/badge/Windows-Download%20.zip-79C0FF?style=for-the-badge&logo=windows&logoColor=0E1014)](https://github.com/tubook/clipm/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/tubook/clipm/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/tubook/clipm/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
 ## Features (v1.0 MVP)
 - **100% Local**: SQLite (Drift) + FTS5 trigram full-text search (English & CJK substrings); images stored content-addressed under `<ApplicationSupport>/images/`.
@@ -37,3 +39,20 @@ flutter build windows --release # Windows
 ### macOS First Launch Note
 1. If Gatekeeper blocks the unsigned personal build, run: `xattr -cr /Applications/clipm.app`
 2. Grant **Accessibility** permission when prompted so `CGEvent` can synthesize `Cmd+V`.
+
+## Contributing
+
+Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before opening an issue or pull request.
+
+## Security
+
+If you discover a security vulnerability, please do **not** open a public issue. See [SECURITY.md](SECURITY.md) for how to report it privately.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) or [GitHub Releases](https://github.com/tubook/clipm/releases) for version history.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE) — Copyright (c) 2026 tubook.
+

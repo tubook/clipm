@@ -1,0 +1,42 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for clipm
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement to **clipm**! Keep in mind that clipm aims to stay lightweight, local-first, and keyboard-driven.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: What problem does this solve, or what workflow would this improve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision this feature working.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: platforms
+    attributes:
+      label: Relevant Platforms
+      options:
+        - label: macOS
+        - label: Windows
+        - label: Both / Cross-platform
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative approaches or workarounds you have considered.
+    validations:
+      required: false

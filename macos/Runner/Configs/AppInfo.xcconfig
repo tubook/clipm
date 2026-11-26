@@ -11,4 +11,4 @@ PRODUCT_NAME = clipm
 PRODUCT_BUNDLE_IDENTIFIER = com.clipm.clipm
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.clipm. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 tubook. Licensed under the MIT License.
