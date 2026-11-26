@@ -121,6 +121,10 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Generate SHA-256 checksums
+        working-directory: release-assets
+        run: sha256sum * > SHA256SUMS.txt
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -134,6 +138,7 @@ jobs:
             - **macOS (Universal / Apple Silicon)**: download `clipm-*-macos.dmg` (drag `clipm.app` to `Applications`) or `clipm-*-macos.zip`.
               > First launch on macOS (unsigned personal build): run `xattr -cr /Applications/clipm.app` if Gatekeeper blocks opening, and grant **Accessibility** permission when prompted so `Cmd+V` paste works.
             - **Windows (x64)**: download `clipm-*-windows-x64.zip`, extract, and run `clipm.exe`.
+            - **Checksums**: verify downloaded archives against `SHA256SUMS.txt` (`shasum -a 256 -c SHA256SUMS.txt` on macOS or `Get-FileHash` on Windows).
 
             ### Shortcuts
             - `Cmd + Ctrl + V` (macOS) / `Win + Ctrl + V` (Windows): Toggle overlay
