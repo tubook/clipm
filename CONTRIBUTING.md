@@ -65,6 +65,28 @@ flutter test
 - Add or update unit tests when changing core logic (such as database queries, deduplication, or filtering).
 - Update `README.md` or `CHANGELOG.md` if your change affects user-facing behavior.
 
+## Release Process (Maintainers)
+
+**clipm** follows [Semantic Versioning](https://semver.org/):
+
+- `PATCH` (`1.0.x`): bug fixes and minor polish
+- `MINOR` (`1.x.0`): backward-compatible features
+- `MAJOR` (`x.0.0`): breaking changes
+
+To cut a new release:
+
+1. Create a release prep PR updating the `version` in `pubspec.yaml` and moving entries from `[Unreleased]` to the new version section in `CHANGELOG.md`.
+2. Ensure CI (`Analyze & Test`) passes and **Squash and merge** into `main`.
+3. Tag the release commit on `main` and push the tag:
+
+   ```bash
+   git checkout main && git pull
+   git tag v1.x.y
+   git push origin v1.x.y
+   ```
+
+4. GitHub Actions ([release.yml](.github/workflows/release.yml)) will automatically build the macOS (`.dmg`, `.zip`) and Windows (`x64 .zip`) binaries, generate `SHA256SUMS.txt`, and publish the GitHub Release.
+
 ## License
 
 By contributing to **clipm**, you agree that your contributions will be licensed under the [MIT License](LICENSE).
