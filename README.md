@@ -2,6 +2,10 @@
 
 A local-first, zero-account, keyboard-driven desktop clipboard history manager inspired by Omarchy's high-contrast monospace aesthetic.
 
+[![Download Latest Release](https://img.shields.io/github/v/release/tubook/clipm?label=Download%20Latest&style=for-the-badge&color=0E1014)](https://github.com/tubook/clipm/releases/latest)
+[![macOS DMG](https://img.shields.io/badge/macOS-Download%20.dmg-79C0FF?style=for-the-badge&logo=apple&logoColor=0E1014)](https://github.com/tubook/clipm/releases/latest)
+[![Windows x64 ZIP](https://img.shields.io/badge/Windows-Download%20.zip-79C0FF?style=for-the-badge&logo=windows&logoColor=0E1014)](https://github.com/tubook/clipm/releases/latest)
+
 ## Features (v1.0 MVP)
 - **100% Local**: SQLite (Drift) + FTS5 trigram full-text search (English & CJK substrings); images stored content-addressed under `<ApplicationSupport>/images/`.
 - **Seamless Paste**: Captures previous foreground window before showing overlay, writes back to OS clipboard with loop prevention, hides overlay, restores focus, and sends `Cmd+V` (macOS) / `Ctrl+V` (Windows).
@@ -17,20 +21,15 @@ A local-first, zero-account, keyboard-driven desktop clipboard history manager i
 - `Ctrl + D` (or `Delete` when search is empty): Delete selected item & local image
 - `Esc`: Hide overlay and restore focus
 
-## Build & Run
+## Build from Source
 
 ```bash
 flutter pub get
 dart run build_runner build
+flutter build macos --release   # macOS
+flutter build windows --release # Windows
 ```
 
-### macOS
-1. Open `macos/Runner.xcworkspace` in Xcode and ensure the 3 Swift files under `macos/Runner/Bridge/` (`ClipmBridgePlugin.swift`, `ClipboardMonitor.swift`, `FocusAndPasteManager.swift`) are added to the **Runner** target.
-2. Run `flutter run -d macos`.
-3. Grant **Accessibility** permission when prompted so `CGEvent` can synthesize `Cmd+V`.
-
-### Windows
-```powershell
-flutter run -d windows
-```
-All C++ bridge sources (`windows/runner/bridge/*.cpp`) and `gdiplus.lib` are already wired in `windows/runner/CMakeLists.txt`.
+### macOS First Launch Note
+1. If Gatekeeper blocks the unsigned personal build, run: `xattr -cr /Applications/clipm.app`
+2. Grant **Accessibility** permission when prompted so `CGEvent` can synthesize `Cmd+V`.

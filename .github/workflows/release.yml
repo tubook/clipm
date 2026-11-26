@@ -1,0 +1,124 @@
+name: Release clipm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      - name: Package macOS DMG & ZIP
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          fi
+          mkdir -p dist dmg_stage
+          cp -R build/macos/Build/Products/Release/clipm.app dmg_stage/
+          ln -s /Applications dmg_stage/Applications
+
+          hdiutil create -volname "clipm" -srcfolder dmg_stage -ov -format UDZO "dist/clipm-${VERSION}-macos.dmg"
+          ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/clipm.app "dist/clipm-${VERSION}-macos.zip"
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipm-macos
+          path: dist/*
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Package Windows ZIP
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ github.event.inputs.tag }}"
+          }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "dist\clipm-${version}-windows-x64.zip" -Force
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipm-windows
+          path: dist/*
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+          name: clipm ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## clipm — Local-First Keyboard-Driven Clipboard History Manager
+
+            ### Direct Downloads
+            - **macOS (Universal / Apple Silicon)**: download `clipm-*-macos.dmg` (drag `clipm.app` to `Applications`) or `clipm-*-macos.zip`.
+              > First launch on macOS (unsigned personal build): run `xattr -cr /Applications/clipm.app` if Gatekeeper blocks opening, and grant **Accessibility** permission when prompted so `Cmd+V` paste works.
+            - **Windows (x64)**: download `clipm-*-windows-x64.zip`, extract, and run `clipm.exe`.
+
+            ### Shortcuts
+            - `Cmd + Ctrl + V` (macOS) / `Win + Ctrl + V` (Windows): Toggle overlay
+            - `Up / Down` or `Ctrl + P / Ctrl + N`: Navigate list
+            - `Enter` / `Shift + Enter`: Paste / Paste as plain text
+            - `Cmd + P` (macOS) / `Ctrl + Shift + P` (Windows): Pin / Unpin
+            - `Ctrl + D` (or `Delete` when search is empty): Delete item
+            - `Esc`: Close & restore previous window focus
+          files: release-assets/*
