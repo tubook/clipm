@@ -87,6 +87,7 @@ class _HistoryListPaneState extends State<HistoryListPane> {
           final isSelected = index == widget.selectedIndex;
           return _HistoryRow(
             item: item,
+            quickSlot: index < 9 ? index + 1 : null,
             isSelected: isSelected,
             onTap: () => widget.onSelect(index),
             onDoubleTap: () => widget.onActivate(item),
@@ -100,12 +101,14 @@ class _HistoryListPaneState extends State<HistoryListPane> {
 class _HistoryRow extends StatelessWidget {
   const _HistoryRow({
     required this.item,
+    required this.quickSlot,
     required this.isSelected,
     required this.onTap,
     required this.onDoubleTap,
   });
 
   final ClipboardItem item;
+  final int? quickSlot;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onDoubleTap;
@@ -179,6 +182,19 @@ class _HistoryRow extends StatelessWidget {
                   ),
                 ),
               ),
+              if (quickSlot != null) ...[
+                const SizedBox(width: 6),
+                Text(
+                  '$quickSlot',
+                  style: OmarchyTheme.mono(
+                    size: 10,
+                    weight: FontWeight.w600,
+                    color: isSelected
+                        ? OmarchyTheme.selectionFg.withValues(alpha: 0.65)
+                        : OmarchyTheme.textMuted.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
               const SizedBox(width: 8),
               Text(
                 TimeUtils.formatRelative(item.lastUsedAt),

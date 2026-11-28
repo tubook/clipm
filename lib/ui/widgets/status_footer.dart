@@ -46,6 +46,7 @@ class StatusFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mod = Platform.isMacOS ? '⌘' : '⌃';
     final pinKey = Platform.isMacOS ? '⌘P' : '⌃⇧P';
 
     return Container(
@@ -72,7 +73,7 @@ class StatusFooter extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            '↵ paste · ⇧↵ plain · $pinKey pin · ⌃D del · esc',
+            '↵ paste · ${mod}1-9 quick · tab filter · $pinKey pin · $mod, prefs · esc',
             style: OmarchyTheme.mono(
               size: 10.5,
               color: OmarchyTheme.textMuted,

@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-27
+
 ### Added
-- MIT `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `CHANGELOG.md`.
-- GitHub Issue & Pull Request templates, Dependabot configuration, and CI workflow for `flutter analyze` and `flutter test`.
+- Quick-paste keyboard shortcuts (`Cmd+1~9` on macOS / `Ctrl+1~9` on Windows, with `Shift` for plain text) and 1–9 slot indicators in the history list.
+- Category filter pills (`ALL / TXT / IMG / PIN`) toggled with `Tab` / `Shift+Tab`, plus `@app:<name>` source-application search syntax.
+- Inline Preferences view (`Cmd+,` / `Ctrl+,`) persisted locally to `settings.json`: custom global hotkey recorder, configurable unpinned history cap & retention days, launch at login (macOS `SMAppService` / Windows `HKCU\...\Run`), privacy pause toggle, ignored app blacklist, and multi-monitor cursor-screen positioning.
+- Tray menu actions for **Pause / Resume Monitoring** and **Settings...**.
+- Unit tests covering DAO filtering/retention, settings persistence/recovery, and monitor pause/blacklist behavior.
 
 ## [1.0.2] - 2026-11-26
 

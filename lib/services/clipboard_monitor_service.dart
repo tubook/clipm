@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 
-import '../core/constants/app_constants.dart';
 import '../core/utils/hash_utils.dart';
 import '../data/database/app_database.dart';
 import '../data/database/daos/clipboard_dao.dart';
 import '../data/database/tables/clipboard_items.dart';
+import '../data/settings/app_settings.dart';
 import '../data/storage/image_storage_service.dart';
 import '../platform/native_bridge.dart';
 import '../platform/native_clipboard_payload.dart';
@@ -19,15 +19,20 @@ class ClipboardMonitorService {
     required NativeBridge nativeBridge,
     required ClipboardDao clipboardDao,
     required ImageStorageService imageStorage,
-    this.maxUnpinnedItems = AppConstants.maxUnpinnedItems,
+    AppSettings? initialSettings,
   })  : _nativeBridge = nativeBridge,
         _dao = clipboardDao,
-        _imageStorage = imageStorage;
+        _imageStorage = imageStorage,
+        _settings = initialSettings ?? AppSettings.defaults();
 
   final NativeBridge _nativeBridge;
   final ClipboardDao _dao;
   final ImageStorageService _imageStorage;
-  final int maxUnpinnedItems;
+  AppSettings _settings;
+
+  bool _isPaused = false;
+  bool get isPaused => _isPaused;
+  AppSettings get settings => _settings;
 
   StreamSubscription<NativeClipboardPayload>? _subscription;
 
@@ -43,6 +48,7 @@ class ClipboardMonitorService {
       onError: (_) {},
     );
     await _nativeBridge.startMonitoring();
+    await pruneExpiredIfNeeded();
   }
 
   Future<void> stop() async {
@@ -51,7 +57,38 @@ class ClipboardMonitorService {
     await _nativeBridge.stopMonitoring();
   }
 
+  void setPaused(bool paused) {
+    _isPaused = paused;
+  }
+
+  Future<void> applySettings(AppSettings next) async {
+    final prevMax = _settings.maxUnpinnedItems;
+    final prevRetention = _settings.retentionDays;
+    _settings = next;
+
+    if (next.maxUnpinnedItems < prevMax) {
+      final orphans = await _dao.pruneOverflow(next.maxUnpinnedItems);
+      if (orphans.isNotEmpty) {
+        await _imageStorage.deleteImages(orphans);
+      }
+    }
+    if (next.retentionDays > 0 && next.retentionDays != prevRetention) {
+      await pruneExpiredIfNeeded();
+    }
+  }
+
+  Future<void> pruneExpiredIfNeeded() async {
+    if (_settings.retentionDays <= 0) return;
+    final orphans = await _dao.pruneExpiredUnpinned(_settings.retentionDays);
+    if (orphans.isNotEmpty) {
+      await _imageStorage.deleteImages(orphans);
+    }
+  }
+
   Future<void> _handleIncomingPayload(NativeClipboardPayload payload) async {
+    if (_isPaused) return;
+    if (_settings.isAppIgnored(payload.sourceApp)) return;
+
     if (payload.type == ClipboardItemType.image) {
       await _ingestImage(payload);
     } else {
@@ -80,7 +117,7 @@ class ClipboardMonitorService {
         charCount: Value(text.runes.length),
         sourceApp: Value(payload.sourceApp),
       ),
-      maxUnpinned: maxUnpinnedItems,
+      maxUnpinned: _settings.maxUnpinnedItems,
     );
 
     if (result.orphanedImagePaths.isNotEmpty) {
@@ -107,7 +144,7 @@ class ClipboardMonitorService {
         contentHash: hash,
         sourceApp: Value(payload.sourceApp),
       ),
-      maxUnpinned: maxUnpinnedItems,
+      maxUnpinned: _settings.maxUnpinnedItems,
     );
 
     if (result.orphanedImagePaths.isNotEmpty) {

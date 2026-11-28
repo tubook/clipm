@@ -6,11 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/omarchy_theme.dart';
 import '../data/database/app_database.dart';
+import '../data/database/daos/clipboard_dao.dart';
 import '../providers/clipboard_ui_providers.dart';
 import '../providers/service_providers.dart';
+import '../providers/settings_providers.dart';
 import 'widgets/history_list_pane.dart';
 import 'widgets/preview_pane.dart';
 import 'widgets/search_header.dart';
+import 'widgets/settings_view.dart';
 import 'widgets/status_footer.dart';
 
 class ClipboardOverlayPage extends ConsumerStatefulWidget {
@@ -26,6 +29,18 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
   late final FocusNode _searchFocusNode;
 
   List<ClipboardItem> _latestItems = const [];
+
+  static final List<LogicalKeyboardKey> _digitKeys = [
+    LogicalKeyboardKey.digit1,
+    LogicalKeyboardKey.digit2,
+    LogicalKeyboardKey.digit3,
+    LogicalKeyboardKey.digit4,
+    LogicalKeyboardKey.digit5,
+    LogicalKeyboardKey.digit6,
+    LogicalKeyboardKey.digit7,
+    LogicalKeyboardKey.digit8,
+    LogicalKeyboardKey.digit9,
+  ];
 
   @override
   void initState() {
@@ -50,6 +65,7 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
     final isControl = hardware.isControlPressed;
     final isMeta = hardware.isMetaPressed;
     final isShift = hardware.isShiftPressed;
+    final isPrimaryMod = Platform.isMacOS ? (isMeta && !isControl) : (isControl && !isMeta);
 
     // Esc -> hide overlay and return focus to previous app
     if (key == LogicalKeyboardKey.escape) {
@@ -57,6 +73,30 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
           .read(windowControllerServiceProvider)
           .hideOverlay(restoreFocus: true);
       return KeyEventResult.handled;
+    }
+
+    // Cmd+, (macOS) / Ctrl+, (Windows/Linux) -> open inline preferences
+    if (isPrimaryMod && key == LogicalKeyboardKey.comma) {
+      ref.read(isSettingsOpenProvider.notifier).state = true;
+      return KeyEventResult.handled;
+    }
+
+    // Tab / Shift+Tab -> cycle category filter (ALL / TXT / IMG / PIN)
+    if (key == LogicalKeyboardKey.tab && !isControl && !isMeta) {
+      _cycleFilter(reverse: isShift);
+      return KeyEventResult.handled;
+    }
+
+    // Cmd+1..9 (macOS) / Ctrl+1..9 (Windows/Linux) -> quick paste item 1..9
+    if (isPrimaryMod && event is KeyDownEvent) {
+      final slotIndex = _digitKeys.indexOf(key);
+      if (slotIndex >= 0 && slotIndex < _latestItems.length) {
+        ref.read(windowControllerServiceProvider).pasteItem(
+              _latestItems[slotIndex],
+              forcePlainText: isShift,
+            );
+        return KeyEventResult.handled;
+      }
     }
 
     // Up / Down or Ctrl+P / Ctrl+N -> navigate list
@@ -86,8 +126,9 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
     }
 
     // Cmd+P (macOS) or Ctrl+Shift+P (Windows/all) -> toggle pin
-    final isPinShortcut = (Platform.isMacOS && isMeta && !isControl && key == LogicalKeyboardKey.keyP) ||
-        (isControl && isShift && key == LogicalKeyboardKey.keyP);
+    final isPinShortcut =
+        (Platform.isMacOS && isMeta && !isControl && key == LogicalKeyboardKey.keyP) ||
+            (isControl && isShift && key == LogicalKeyboardKey.keyP);
     if (isPinShortcut) {
       final selected = _currentSelectedItem();
       if (selected != null) {
@@ -112,6 +153,14 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
     return KeyEventResult.ignored;
   }
 
+  void _cycleFilter({required bool reverse}) {
+    const modes = ClipboardFilterMode.values;
+    final current = ref.read(filterModeProvider);
+    final nextIndex = (current.index + (reverse ? -1 : 1) + modes.length) % modes.length;
+    ref.read(filterModeProvider.notifier).state = modes[nextIndex];
+    ref.read(selectedIndexProvider.notifier).state = 0;
+  }
+
   void _moveSelection(int delta) {
     if (_latestItems.isEmpty) return;
     final current = ref.read(selectedIndexProvider);
@@ -126,6 +175,13 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
     return _latestItems[idx];
   }
 
+  void _closeSettings() {
+    ref.read(isSettingsOpenProvider.notifier).state = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Re-focus search input and clear stale text whenever overlay is summoned.
@@ -134,6 +190,9 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
       _searchFocusNode.requestFocus();
     });
 
+    final isSettingsOpen = ref.watch(isSettingsOpenProvider);
+    final filterMode = ref.watch(filterModeProvider);
+    final isPaused = ref.watch(monitoringPausedProvider);
     final itemsAsync = ref.watch(clipboardItemsProvider);
     final totalCount = ref.watch(clipboardTotalCountProvider).valueOrNull ?? 0;
     final rawSelectedIndex = ref.watch(selectedIndexProvider);
@@ -173,60 +232,80 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
           ),
           child: ClipPath(
             clipper: ShapeBorderClipper(shape: squircleShape),
-            child: Column(
-            children: [
-              SearchHeader(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                matchedCount: items.length,
-                totalCount: totalCount,
-                onChanged: (value) {
-                  ref.read(searchQueryProvider.notifier).state = value;
-                  ref.read(selectedIndexProvider.notifier).state = 0;
-                },
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    // Left Pane (40%): Compact History List
-                    Expanded(
-                      flex: 40,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: OmarchyTheme.surface,
-                          border: Border(
-                            right: BorderSide(color: OmarchyTheme.border, width: 1),
-                          ),
-                        ),
-                        child: HistoryListPane(
-                          items: items,
-                          selectedIndex: selectedIndex,
-                          onSelect: (index) {
-                            ref.read(selectedIndexProvider.notifier).state = index;
-                            _searchFocusNode.requestFocus();
-                          },
-                          onActivate: (item) {
-                            ref
-                                .read(windowControllerServiceProvider)
-                                .pasteItem(item, forcePlainText: false);
-                          },
+            child: isSettingsOpen
+                ? SettingsView(onClose: _closeSettings)
+                : Column(
+                    children: [
+                      SearchHeader(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        matchedCount: items.length,
+                        totalCount: totalCount,
+                        filterMode: filterMode,
+                        isPaused: isPaused,
+                        onTogglePause: () {
+                          ref
+                              .read(appSettingsProvider.notifier)
+                              .toggleMonitoringPaused();
+                          _searchFocusNode.requestFocus();
+                        },
+                        onFilterChanged: (mode) {
+                          ref.read(filterModeProvider.notifier).state = mode;
+                          ref.read(selectedIndexProvider.notifier).state = 0;
+                          _searchFocusNode.requestFocus();
+                        },
+                        onChanged: (value) {
+                          ref.read(searchQueryProvider.notifier).state = value;
+                          ref.read(selectedIndexProvider.notifier).state = 0;
+                        },
+                      ),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            // Left Pane (40%): Compact History List
+                            Expanded(
+                              flex: 40,
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: OmarchyTheme.surface,
+                                  border: Border(
+                                    right: BorderSide(
+                                      color: OmarchyTheme.border,
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: HistoryListPane(
+                                  items: items,
+                                  selectedIndex: selectedIndex,
+                                  onSelect: (index) {
+                                    ref
+                                        .read(selectedIndexProvider.notifier)
+                                        .state = index;
+                                    _searchFocusNode.requestFocus();
+                                  },
+                                  onActivate: (item) {
+                                    ref
+                                        .read(windowControllerServiceProvider)
+                                        .pasteItem(item, forcePlainText: false);
+                                  },
+                                ),
+                              ),
+                            ),
+                            // Right Pane (60%): Full Preview
+                            Expanded(
+                              flex: 60,
+                              child: PreviewPane(item: selectedItem),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    // Right Pane (60%): Full Preview
-                    Expanded(
-                      flex: 60,
-                      child: PreviewPane(item: selectedItem),
-                    ),
-                  ],
-                ),
-              ),
-              // Full-width bottom status bar
-              StatusFooter(item: selectedItem),
-            ],
+                      // Full-width bottom status bar
+                      StatusFooter(item: selectedItem),
+                    ],
+                  ),
           ),
         ),
-      ),
       ),
     );
   }

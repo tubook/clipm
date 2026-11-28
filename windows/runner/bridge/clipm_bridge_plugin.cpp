@@ -12,7 +12,8 @@ void ClipmBridgePlugin::RegisterWithRegistrar(flutter::FlutterEngine* engine,
 
 ClipmBridgePlugin::ClipmBridgePlugin(flutter::BinaryMessenger* messenger,
                                      HWND flutter_hwnd)
-    : focus_manager_(std::make_unique<FocusAndPasteManager>(flutter_hwnd)) {
+    : flutter_hwnd_(flutter_hwnd),
+      focus_manager_(std::make_unique<FocusAndPasteManager>(flutter_hwnd)) {
   method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           messenger, "com.clipm/native_bridge/methods",
@@ -134,6 +135,84 @@ void ClipmBridgePlugin::HandleMethodCall(
     result->Success();
   } else if (method == "checkAccessibilityPermission") {
     result->Success(flutter::EncodableValue(true));
+  } else if (method == "getActiveScreenWorkArea") {
+    POINT pt{};
+    if (!GetCursorPos(&pt)) {
+      result->Success();
+      return;
+    }
+    HMONITOR monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO mi{};
+    mi.cbSize = sizeof(MONITORINFO);
+    if (!GetMonitorInfoW(monitor, &mi)) {
+      result->Success();
+      return;
+    }
+    UINT dpi = flutter_hwnd_ ? GetDpiForWindow(flutter_hwnd_) : 96;
+    double scale = dpi > 0 ? static_cast<double>(dpi) / 96.0 : 1.0;
+
+    flutter::EncodableMap rect;
+    rect[flutter::EncodableValue("x")] =
+        flutter::EncodableValue(static_cast<double>(mi.rcWork.left) / scale);
+    rect[flutter::EncodableValue("y")] =
+        flutter::EncodableValue(static_cast<double>(mi.rcWork.top) / scale);
+    rect[flutter::EncodableValue("width")] = flutter::EncodableValue(
+        static_cast<double>(mi.rcWork.right - mi.rcWork.left) / scale);
+    rect[flutter::EncodableValue("height")] = flutter::EncodableValue(
+        static_cast<double>(mi.rcWork.bottom - mi.rcWork.top) / scale);
+    result->Success(flutter::EncodableValue(rect));
+  } else if (method == "setLaunchAtLogin") {
+    bool enabled = false;
+    if (const auto* args =
+            std::get_if<flutter::EncodableMap>(call.arguments())) {
+      auto it = args->find(flutter::EncodableValue("enabled"));
+      if (it != args->end()) {
+        if (const auto* b = std::get_if<bool>(&it->second)) enabled = *b;
+      }
+    }
+    HKEY key = nullptr;
+    const wchar_t* run_path = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+    const wchar_t* value_name = L"clipm";
+    bool ok = false;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, run_path, 0, KEY_SET_VALUE, &key) ==
+        ERROR_SUCCESS) {
+      if (enabled) {
+        wchar_t exe_path[MAX_PATH];
+        DWORD len = GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
+        if (len > 0 && len < MAX_PATH) {
+          std::wstring quoted = L"\"";
+          quoted += exe_path;
+          quoted += L"\"";
+          ok = RegSetValueExW(
+                   key, value_name, 0, REG_SZ,
+                   reinterpret_cast<const BYTE*>(quoted.c_str()),
+                   static_cast<DWORD>((quoted.size() + 1) * sizeof(wchar_t))) ==
+               ERROR_SUCCESS;
+        }
+      } else {
+        LSTATUS status = RegDeleteValueW(key, value_name);
+        ok = (status == ERROR_SUCCESS || status == ERROR_FILE_NOT_FOUND);
+      }
+      RegCloseKey(key);
+    }
+    result->Success(flutter::EncodableValue(ok));
+  } else if (method == "getLaunchAtLogin") {
+    HKEY key = nullptr;
+    const wchar_t* run_path = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+    const wchar_t* value_name = L"clipm";
+    bool enabled = false;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, run_path, 0, KEY_QUERY_VALUE, &key) ==
+        ERROR_SUCCESS) {
+      DWORD type = 0;
+      DWORD size = 0;
+      if (RegQueryValueExW(key, value_name, nullptr, &type, nullptr, &size) ==
+              ERROR_SUCCESS &&
+          type == REG_SZ && size > 0) {
+        enabled = true;
+      }
+      RegCloseKey(key);
+    }
+    result->Success(flutter::EncodableValue(enabled));
   } else {
     result->NotImplemented();
   }

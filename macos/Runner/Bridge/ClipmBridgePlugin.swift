@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import ServiceManagement
 
 final class ClipmBridgePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     private var eventSink: FlutterEventSink?
@@ -90,6 +91,51 @@ final class ClipmBridgePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             let args = call.arguments as? [String: Any]
             let prompt = (args?["prompt"] as? Bool) ?? false
             result(focusManager.checkAccessibilityPermission(prompt: prompt))
+
+        case "getActiveScreenWorkArea":
+            let mouseLocation = NSEvent.mouseLocation
+            let targetScreen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
+                ?? NSScreen.main
+                ?? NSScreen.screens.first
+            guard let screen = targetScreen,
+                  let primaryScreen = NSScreen.screens.first else {
+                result(nil)
+                return
+            }
+            let visible = screen.visibleFrame
+            let primaryHeight = primaryScreen.frame.height
+            let topLeftY = primaryHeight - visible.maxY
+            result([
+                "x": Double(visible.minX),
+                "y": Double(topLeftY),
+                "width": Double(visible.width),
+                "height": Double(visible.height),
+            ])
+
+        case "setLaunchAtLogin":
+            let args = call.arguments as? [String: Any]
+            let enabled = (args?["enabled"] as? Bool) ?? false
+            if #available(macOS 13.0, *) {
+                do {
+                    if enabled {
+                        try SMAppService.mainApp.register()
+                    } else {
+                        try SMAppService.mainApp.unregister()
+                    }
+                    result(true)
+                } catch {
+                    result(false)
+                }
+            } else {
+                result(false)
+            }
+
+        case "getLaunchAtLogin":
+            if #available(macOS 13.0, *) {
+                result(SMAppService.mainApp.status == .enabled)
+            } else {
+                result(false)
+            }
 
         default:
             result(FlutterMethodNotImplemented)
