@@ -73,11 +73,13 @@ final class ClipmBridgePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             let plainText = args["plainText"] as? String
             let richContent = args["richContent"] as? String
             let imageBytes = (args["imageBytes"] as? FlutterStandardTypedData)?.data
+            let filePaths = args["filePaths"] as? [String]
             monitor?.writeToPasteboard(
                 type: type,
                 plainText: plainText,
                 richContent: richContent,
-                imageBytes: imageBytes
+                imageBytes: imageBytes,
+                filePaths: filePaths
             )
             result(nil)
 
@@ -136,6 +138,17 @@ final class ClipmBridgePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             } else {
                 result(false)
             }
+
+        case "openUrl":
+            let args = call.arguments as? [String: Any]
+            guard let urlString = args?["url"] as? String,
+                  let url = URL(string: urlString),
+                  let scheme = url.scheme?.lowercased(),
+                  (scheme == "http" || scheme == "https") else {
+                result(false)
+                return
+            }
+            result(NSWorkspace.shared.open(url))
 
         default:
             result(FlutterMethodNotImplemented)

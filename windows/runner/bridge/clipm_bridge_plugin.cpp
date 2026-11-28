@@ -1,5 +1,7 @@
 #include "clipm_bridge_plugin.h"
 
+#include <shellapi.h>
+
 namespace {
 std::unique_ptr<ClipmBridgePlugin> g_clipm_bridge_instance;
 }
@@ -71,6 +73,14 @@ void ClipmBridgePlugin::EmitClipboardEvent(const NativeClipboardEvent& event) {
     map[flutter::EncodableValue("imageHeight")] =
         flutter::EncodableValue(event.image_height);
   }
+  if (!event.file_paths.empty()) {
+    flutter::EncodableList paths;
+    for (const auto& p : event.file_paths) {
+      paths.push_back(flutter::EncodableValue(p));
+    }
+    map[flutter::EncodableValue("filePaths")] =
+        flutter::EncodableValue(std::move(paths));
+  }
   if (!event.source_app.empty()) {
     map[flutter::EncodableValue("sourceApp")] =
         flutter::EncodableValue(event.source_app);
@@ -116,10 +126,22 @@ void ClipmBridgePlugin::HandleMethodCall(
         img = *v;
       }
     }
+    std::vector<std::string> files;
+    auto it_files = args->find(flutter::EncodableValue("filePaths"));
+    if (it_files != args->end()) {
+      if (const auto* list =
+              std::get_if<flutter::EncodableList>(&it_files->second)) {
+        for (const auto& entry : *list) {
+          if (const auto* s = std::get_if<std::string>(&entry)) {
+            if (!s->empty()) files.push_back(*s);
+          }
+        }
+      }
+    }
 
     if (monitor_) {
       monitor_->WriteToClipboard(get_str("type"), get_str("plainText"),
-                                 get_str("richContent"), img);
+                                 get_str("richContent"), img, files);
     }
     result->Success();
   } else if (method == "restoreFocusAndPaste") {
@@ -213,6 +235,30 @@ void ClipmBridgePlugin::HandleMethodCall(
       RegCloseKey(key);
     }
     result->Success(flutter::EncodableValue(enabled));
+  } else if (method == "openUrl") {
+    std::string url;
+    if (const auto* args =
+            std::get_if<flutter::EncodableMap>(call.arguments())) {
+      auto it = args->find(flutter::EncodableValue("url"));
+      if (it != args->end()) {
+        if (const auto* s = std::get_if<std::string>(&it->second)) url = *s;
+      }
+    }
+    bool valid = (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0);
+    if (!valid) {
+      result->Success(flutter::EncodableValue(false));
+      return;
+    }
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, url.data(),
+                                   static_cast<int>(url.size()), nullptr, 0);
+    std::wstring wurl(wlen, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, url.data(), static_cast<int>(url.size()),
+                        wurl.data(), wlen);
+    HINSTANCE res =
+        ShellExecuteW(nullptr, L"open", wurl.c_str(), nullptr, nullptr,
+                      SW_SHOWNORMAL);
+    bool ok = reinterpret_cast<intptr_t>(res) > 32;
+    result->Success(flutter::EncodableValue(ok));
   } else {
     result->NotImplemented();
   }

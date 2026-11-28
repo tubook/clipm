@@ -207,6 +207,40 @@ class WindowControllerService with WindowListener, TrayListener {
     await _nativeBridge.restoreFocusAndPaste(simulatePaste: true);
   }
 
+  /// Writes [item] to the clipboard and hides the overlay WITHOUT pasting.
+  Future<void> copyItemOnly(
+    ClipboardItem item, {
+    bool forcePlainText = false,
+  }) async {
+    await _monitorService.writeItemToClipboard(
+      item,
+      forcePlainText: forcePlainText,
+    );
+    await hideOverlay(restoreFocus: true);
+  }
+
+  /// Writes transformed plain [text] to the clipboard, restores focus, and pastes.
+  Future<void> pasteTransformedText(String text) async {
+    await _monitorService.writePlainTextToClipboard(text);
+    _isVisible = false;
+    await _nativeBridge.restoreFocusAndPaste(simulatePaste: true);
+  }
+
+  /// Writes transformed plain [text] to the clipboard without pasting.
+  Future<void> copyTransformedTextOnly(String text) async {
+    await _monitorService.writePlainTextToClipboard(text);
+    await hideOverlay(restoreFocus: true);
+  }
+
+  /// Opens an HTTP(S) URL in the default browser and dismisses the overlay.
+  Future<bool> openUrl(String url) async {
+    final ok = await _nativeBridge.openUrl(url);
+    if (ok) {
+      await hideOverlay(restoreFocus: false);
+    }
+    return ok;
+  }
+
   Future<void> dispose() async {
     windowManager.removeListener(this);
     trayManager.removeListener(this);

@@ -31,6 +31,7 @@ class SearchHeader extends StatelessWidget {
     (ClipboardFilterMode.all, 'ALL'),
     (ClipboardFilterMode.text, 'TXT'),
     (ClipboardFilterMode.image, 'IMG'),
+    (ClipboardFilterMode.file, 'FILE'),
     (ClipboardFilterMode.pinned, 'PIN'),
   ];
 

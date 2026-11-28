@@ -27,14 +27,16 @@ final windowControllerServiceProvider = Provider<WindowControllerService>((ref) 
     nativeBridge: ref.watch(nativeBridgeProvider),
     monitorService: ref.watch(clipboardMonitorServiceProvider),
     onOverlayShown: () {
-      // Reset search query, filter, settings panel, selection, and bump focus trigger.
+      // Reset search query, filter, overlays, selection, and bump focus trigger.
       ref.read(isSettingsOpenProvider.notifier).state = false;
+      ref.read(isActionPaletteOpenProvider.notifier).state = false;
       ref.read(searchQueryProvider.notifier).state = '';
       ref.read(filterModeProvider.notifier).state = ClipboardFilterMode.all;
       ref.read(selectedIndexProvider.notifier).state = 0;
       ref.read(overlayShowCounterProvider.notifier).state++;
     },
     onOpenSettings: () {
+      ref.read(isActionPaletteOpenProvider.notifier).state = false;
       ref.read(isSettingsOpenProvider.notifier).state = true;
     },
     onTogglePause: () {

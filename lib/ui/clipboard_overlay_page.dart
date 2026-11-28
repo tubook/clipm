@@ -1,15 +1,21 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
 import '../core/theme/omarchy_theme.dart';
+import '../core/utils/content_detector.dart';
 import '../data/database/app_database.dart';
 import '../data/database/daos/clipboard_dao.dart';
+import '../data/database/tables/clipboard_items.dart';
 import '../providers/clipboard_ui_providers.dart';
+import '../providers/database_providers.dart';
 import '../providers/service_providers.dart';
 import '../providers/settings_providers.dart';
+import 'widgets/action_palette_overlay.dart';
 import 'widgets/history_list_pane.dart';
 import 'widgets/preview_pane.dart';
 import 'widgets/search_header.dart';
@@ -29,6 +35,8 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
   late final FocusNode _searchFocusNode;
 
   List<ClipboardItem> _latestItems = const [];
+  String? _transientMessage;
+  Timer? _toastTimer;
 
   static final List<LogicalKeyboardKey> _digitKeys = [
     LogicalKeyboardKey.digit1,
@@ -50,9 +58,73 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
 
   @override
   void dispose() {
+    _toastTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _showToast(String message) {
+    _toastTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _transientMessage = message);
+    _toastTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _transientMessage = null);
+      }
+    });
+  }
+
+  Future<void> _saveImageToDownloads(ClipboardItem item) async {
+    final relPath = item.imagePath;
+    if (relPath == null) return;
+    final savedPath = await ref
+        .read(imageStorageServiceProvider)
+        .saveImageToDownloads(relPath, item.contentHash);
+    if (savedPath != null) {
+      _showToast('saved to Downloads/${p.basename(savedPath)}');
+    } else {
+      _showToast('failed to save image');
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final ok = await ref.read(windowControllerServiceProvider).openUrl(url);
+    if (!ok) {
+      _showToast('failed to open URL');
+    }
+  }
+
+  Future<void> _executeAction(ClipboardItem item, QuickAction action) async {
+    _closeActionPalette();
+    final windowController = ref.read(windowControllerServiceProvider);
+    final monitor = ref.read(clipboardMonitorServiceProvider);
+
+    switch (action.kind) {
+      case QuickActionKind.pasteDefault:
+        await windowController.pasteItem(item, forcePlainText: false);
+      case QuickActionKind.pastePlainText:
+        await windowController.pasteItem(item, forcePlainText: true);
+      case QuickActionKind.copyOnly:
+        await windowController.copyItemOnly(item, forcePlainText: false);
+      case QuickActionKind.copyPlainTextOnly:
+        await windowController.copyItemOnly(item, forcePlainText: true);
+      case QuickActionKind.openUrl:
+        final text = item.plainText?.trim();
+        if (text != null && text.isNotEmpty) {
+          await _openUrl(text);
+        }
+      case QuickActionKind.saveImageToDownloads:
+        await _saveImageToDownloads(item);
+      case QuickActionKind.transformAndPaste:
+        if (action.transformedText != null) {
+          await windowController.pasteTransformedText(action.transformedText!);
+        }
+      case QuickActionKind.togglePin:
+        await monitor.togglePin(item.id);
+      case QuickActionKind.deleteItem:
+        await monitor.deleteItem(item.id);
+    }
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -65,7 +137,8 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
     final isControl = hardware.isControlPressed;
     final isMeta = hardware.isMetaPressed;
     final isShift = hardware.isShiftPressed;
-    final isPrimaryMod = Platform.isMacOS ? (isMeta && !isControl) : (isControl && !isMeta);
+    final isPrimaryMod =
+        Platform.isMacOS ? (isMeta && !isControl) : (isControl && !isMeta);
 
     // Esc -> hide overlay and return focus to previous app
     if (key == LogicalKeyboardKey.escape) {
@@ -77,11 +150,43 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
 
     // Cmd+, (macOS) / Ctrl+, (Windows/Linux) -> open inline preferences
     if (isPrimaryMod && key == LogicalKeyboardKey.comma) {
+      ref.read(isActionPaletteOpenProvider.notifier).state = false;
       ref.read(isSettingsOpenProvider.notifier).state = true;
       return KeyEventResult.handled;
     }
 
-    // Tab / Shift+Tab -> cycle category filter (ALL / TXT / IMG / PIN)
+    // Cmd+K (macOS) / Ctrl+K (Windows/Linux) -> open Quick Action Palette
+    if (isPrimaryMod && key == LogicalKeyboardKey.keyK && event is KeyDownEvent) {
+      if (_currentSelectedItem() != null) {
+        ref.read(isActionPaletteOpenProvider.notifier).state = true;
+      }
+      return KeyEventResult.handled;
+    }
+
+    // Cmd+O (macOS) / Ctrl+O (Windows/Linux) -> open URL in default browser
+    if (isPrimaryMod && key == LogicalKeyboardKey.keyO && event is KeyDownEvent) {
+      final selected = _currentSelectedItem();
+      if (selected != null &&
+          selected.type != ClipboardItemType.image &&
+          selected.type != ClipboardItemType.file) {
+        final detected = ContentDetector.detect(selected.plainText ?? '');
+        if (detected.kind == DetectedContentKind.url && detected.uri != null) {
+          _openUrl(detected.uri.toString());
+          return KeyEventResult.handled;
+        }
+      }
+    }
+
+    // Cmd+S (macOS) / Ctrl+S (Windows/Linux) -> save selected image to Downloads
+    if (isPrimaryMod && key == LogicalKeyboardKey.keyS && event is KeyDownEvent) {
+      final selected = _currentSelectedItem();
+      if (selected != null && selected.type == ClipboardItemType.image) {
+        _saveImageToDownloads(selected);
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Tab / Shift+Tab -> cycle category filter (ALL / TXT / IMG / FILE / PIN)
     if (key == LogicalKeyboardKey.tab && !isControl && !isMeta) {
       _cycleFilter(reverse: isShift);
       return KeyEventResult.handled;
@@ -156,7 +261,8 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
   void _cycleFilter({required bool reverse}) {
     const modes = ClipboardFilterMode.values;
     final current = ref.read(filterModeProvider);
-    final nextIndex = (current.index + (reverse ? -1 : 1) + modes.length) % modes.length;
+    final nextIndex =
+        (current.index + (reverse ? -1 : 1) + modes.length) % modes.length;
     ref.read(filterModeProvider.notifier).state = modes[nextIndex];
     ref.read(selectedIndexProvider.notifier).state = 0;
   }
@@ -182,6 +288,13 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
     });
   }
 
+  void _closeActionPalette() {
+    ref.read(isActionPaletteOpenProvider.notifier).state = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Re-focus search input and clear stale text whenever overlay is summoned.
@@ -191,6 +304,7 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
     });
 
     final isSettingsOpen = ref.watch(isSettingsOpenProvider);
+    final isActionPaletteOpen = ref.watch(isActionPaletteOpenProvider);
     final filterMode = ref.watch(filterModeProvider);
     final isPaused = ref.watch(monitoringPausedProvider);
     final itemsAsync = ref.watch(clipboardItemsProvider);
@@ -234,74 +348,100 @@ class _ClipboardOverlayPageState extends ConsumerState<ClipboardOverlayPage> {
             clipper: ShapeBorderClipper(shape: squircleShape),
             child: isSettingsOpen
                 ? SettingsView(onClose: _closeSettings)
-                : Column(
+                : Stack(
                     children: [
-                      SearchHeader(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        matchedCount: items.length,
-                        totalCount: totalCount,
-                        filterMode: filterMode,
-                        isPaused: isPaused,
-                        onTogglePause: () {
-                          ref
-                              .read(appSettingsProvider.notifier)
-                              .toggleMonitoringPaused();
-                          _searchFocusNode.requestFocus();
-                        },
-                        onFilterChanged: (mode) {
-                          ref.read(filterModeProvider.notifier).state = mode;
-                          ref.read(selectedIndexProvider.notifier).state = 0;
-                          _searchFocusNode.requestFocus();
-                        },
-                        onChanged: (value) {
-                          ref.read(searchQueryProvider.notifier).state = value;
-                          ref.read(selectedIndexProvider.notifier).state = 0;
-                        },
-                      ),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            // Left Pane (40%): Compact History List
-                            Expanded(
-                              flex: 40,
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  color: OmarchyTheme.surface,
-                                  border: Border(
-                                    right: BorderSide(
-                                      color: OmarchyTheme.border,
-                                      width: 1,
+                      Column(
+                        children: [
+                          SearchHeader(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            matchedCount: items.length,
+                            totalCount: totalCount,
+                            filterMode: filterMode,
+                            isPaused: isPaused,
+                            onTogglePause: () {
+                              ref
+                                  .read(appSettingsProvider.notifier)
+                                  .toggleMonitoringPaused();
+                              _searchFocusNode.requestFocus();
+                            },
+                            onFilterChanged: (mode) {
+                              ref.read(filterModeProvider.notifier).state = mode;
+                              ref.read(selectedIndexProvider.notifier).state = 0;
+                              _searchFocusNode.requestFocus();
+                            },
+                            onChanged: (value) {
+                              ref.read(searchQueryProvider.notifier).state =
+                                  value;
+                              ref.read(selectedIndexProvider.notifier).state = 0;
+                            },
+                          ),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                // Left Pane (40%): Compact History List
+                                Expanded(
+                                  flex: 40,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: OmarchyTheme.surface,
+                                      border: Border(
+                                        right: BorderSide(
+                                          color: OmarchyTheme.border,
+                                          width: 1,
+                                        ),
+                                      ),
+                                    ),
+                                    child: HistoryListPane(
+                                      items: items,
+                                      selectedIndex: selectedIndex,
+                                      onSelect: (index) {
+                                        ref
+                                            .read(
+                                              selectedIndexProvider.notifier,
+                                            )
+                                            .state = index;
+                                        _searchFocusNode.requestFocus();
+                                      },
+                                      onActivate: (item) {
+                                        ref
+                                            .read(
+                                              windowControllerServiceProvider,
+                                            )
+                                            .pasteItem(
+                                              item,
+                                              forcePlainText: false,
+                                            );
+                                      },
                                     ),
                                   ),
                                 ),
-                                child: HistoryListPane(
-                                  items: items,
-                                  selectedIndex: selectedIndex,
-                                  onSelect: (index) {
-                                    ref
-                                        .read(selectedIndexProvider.notifier)
-                                        .state = index;
-                                    _searchFocusNode.requestFocus();
-                                  },
-                                  onActivate: (item) {
-                                    ref
-                                        .read(windowControllerServiceProvider)
-                                        .pasteItem(item, forcePlainText: false);
-                                  },
+                                // Right Pane (60%): Full Smart Preview
+                                Expanded(
+                                  flex: 60,
+                                  child: PreviewPane(
+                                    item: selectedItem,
+                                    onOpenUrl: _openUrl,
+                                    onSaveImage: _saveImageToDownloads,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                            // Right Pane (60%): Full Preview
-                            Expanded(
-                              flex: 60,
-                              child: PreviewPane(item: selectedItem),
-                            ),
-                          ],
-                        ),
+                          ),
+                          // Full-width bottom status bar
+                          StatusFooter(
+                            item: selectedItem,
+                            transientMessage: _transientMessage,
+                          ),
+                        ],
                       ),
-                      // Full-width bottom status bar
-                      StatusFooter(item: selectedItem),
+                      if (isActionPaletteOpen && selectedItem != null)
+                        ActionPaletteOverlay(
+                          item: selectedItem,
+                          onExecute: (action) =>
+                              _executeAction(selectedItem, action),
+                          onClose: _closeActionPalette,
+                        ),
                     ],
                   ),
           ),

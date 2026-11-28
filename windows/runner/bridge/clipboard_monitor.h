@@ -8,12 +8,13 @@
 #include <vector>
 
 struct NativeClipboardEvent {
-  std::string type;  // "text" | "richText" | "image"
+  std::string type;  // "text" | "richText" | "image" | "file"
   std::string plain_text;
   std::string rich_content;
   std::vector<uint8_t> image_bytes;
   int image_width = 0;
   int image_height = 0;
+  std::vector<std::string> file_paths;
   std::string source_app;
 };
 
@@ -30,7 +31,8 @@ class ClipboardMonitor {
   bool WriteToClipboard(const std::string& type,
                         const std::string& plain_text,
                         const std::string& rich_content,
-                        const std::vector<uint8_t>& image_bytes);
+                        const std::vector<uint8_t>& image_bytes,
+                        const std::vector<std::string>& file_paths = {});
 
  private:
   static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);

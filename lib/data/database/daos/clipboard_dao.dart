@@ -9,6 +9,7 @@ enum ClipboardFilterMode {
   all,
   text,
   image,
+  file,
   pinned,
 }
 
@@ -93,6 +94,9 @@ class ClipboardDao extends DatabaseAccessor<AppDatabase>
       case ClipboardFilterMode.image:
         conditions.add('c.type = ?');
         variables.add(Variable.withInt(ClipboardItemType.image.index));
+      case ClipboardFilterMode.file:
+        conditions.add('c.type = ?');
+        variables.add(Variable.withInt(ClipboardItemType.file.index));
       case ClipboardFilterMode.pinned:
         conditions.add('c.is_pinned = 1');
     }

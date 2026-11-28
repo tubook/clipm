@@ -19,7 +19,9 @@ A local-first, zero-account, keyboard-driven desktop clipboard history manager i
 ## Features
 - **100% Local**: SQLite (Drift) + FTS5 trigram full-text search (English & CJK substrings); images stored content-addressed under `<ApplicationSupport>/images/`.
 - **Seamless Paste & Quick Slots**: Captures previous foreground window before showing overlay, writes back to OS clipboard with loop prevention, hides overlay, restores focus, and sends `Cmd+V` (macOS) / `Ctrl+V` (Windows). Instant quick-paste for top 9 items via `Cmd/Ctrl + 1~9`.
-- **Type & Source Filtering**: Cycle `ALL / TXT / IMG / PIN` with `Tab` and filter by source application with `@app:<name>`.
+- **Smart Preview & File Support**: Automatic color swatches (`#Hex` / `rgb()`), clickable URLs (`Cmd/Ctrl + O`), pretty-printed JSON toggle, one-key image export to Downloads (`Cmd/Ctrl + S`), and native file clipboard support (`Enter` pastes files, `Shift+Enter` pastes file paths).
+- **Quick Action Palette (`Cmd/Ctrl + K`)**: Context-aware command palette supporting Copy Only (no auto-paste) and instant text transforms (Trim, Single Line, Case conversions, Pretty/Minify JSON, URL & Base64 Encode/Decode).
+- **Type & Source Filtering**: Cycle `ALL / TXT / IMG / FILE / PIN` with `Tab` and filter by source application with `@app:<name>`.
 - **Preferences & Privacy Controls**: Inline preferences (`Cmd+,` / `Ctrl+,`) persisted locally in `settings.json` — configurable global hotkey, capacity/retention limits, launch at login, pause monitoring (privacy mode), ignored app blacklist, and multi-monitor cursor-screen centering.
 - **Sensitive Content Filtering**: Drops password-manager clipboard entries (`org.nspasteboard.ConcealedType` / `TransientType` on macOS; `ExcludeClipboardContentFromMonitorProcessing` / `CanIncludeInClipboardHistory` on Windows).
 - **Auto Dedup & Capacity Limit**: SHA-256 deduplication; configurable unpinned item limit (default 500) and optional day-based expiration with automatic disk image cleanup.
@@ -27,13 +29,16 @@ A local-first, zero-account, keyboard-driven desktop clipboard history manager i
 ## Keyboard Shortcuts
 - `Cmd + Ctrl + V` (macOS) / `Win + Ctrl + V` (Windows): Toggle overlay globally (customizable in Preferences)
 - `Up / Down` or `Ctrl + P / Ctrl + N`: Navigate history list
-- `Enter` / `Shift + Enter`: Paste selected item (or force plain text)
+- `Enter` / `Shift + Enter`: Paste selected item (or force plain text / file paths)
 - `Cmd + 1~9` (macOS) / `Ctrl + 1~9` (Windows): Quick-paste item 1–9 (add `Shift` for plain text)
-- `Tab` / `Shift + Tab`: Cycle filter (`ALL` / `TXT` / `IMG` / `PIN`)
+- `Cmd + K` (macOS) / `Ctrl + K` (Windows): Open Quick Action Palette (Copy Only & text transforms)
+- `Cmd + O` (macOS) / `Ctrl + O` (Windows): Open detected URL in default browser
+- `Cmd + S` (macOS) / `Ctrl + S` (Windows): Save selected image to Downloads
+- `Tab` / `Shift + Tab`: Cycle filter (`ALL` / `TXT` / `IMG` / `FILE` / `PIN`)
 - `Cmd + P` (macOS) / `Ctrl + Shift + P` (Windows): Toggle Pin
 - `Ctrl + D` (or `Delete` when search is empty): Delete selected item & local image
 - `Cmd + ,` (macOS) / `Ctrl + ,` (Windows): Open inline Preferences
-- `Esc`: Close Preferences or hide overlay and restore focus
+- `Esc`: Close Action Palette / Preferences, or hide overlay and restore focus
 
 ## Build from Source
 

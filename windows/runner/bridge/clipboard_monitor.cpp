@@ -1,6 +1,8 @@
 #include "clipboard_monitor.h"
 
 #include <gdiplus.h>
+#include <shellapi.h>
+#include <shlobj.h>
 #include <shlwapi.h>
 
 #include <chrono>
@@ -264,7 +266,36 @@ void ClipboardMonitor::HandleClipboardUpdate() {
   event.source_app = GetSourceAppName();
   bool has_payload = false;
 
-  if (!IsClipboardFormatAvailable(CF_HDROP) && TryExtractImage(event)) {
+  if (IsClipboardFormatAvailable(CF_HDROP)) {
+    HANDLE h_drop = GetClipboardData(CF_HDROP);
+    if (h_drop) {
+      HDROP drop = static_cast<HDROP>(h_drop);
+      UINT count = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
+      std::string joined;
+      for (UINT i = 0; i < count; ++i) {
+        UINT len = DragQueryFileW(drop, i, nullptr, 0);
+        if (len == 0) continue;
+        std::wstring path_buf(len + 1, L'\0');
+        if (DragQueryFileW(drop, i, path_buf.data(), len + 1) > 0) {
+          path_buf.resize(len);
+          std::string utf8 = WideToUtf8(path_buf);
+          if (!utf8.empty()) {
+            if (!joined.empty()) joined += "\n";
+            joined += utf8;
+            event.file_paths.push_back(std::move(utf8));
+          }
+        }
+      }
+      if (!event.file_paths.empty()) {
+        event.type = "file";
+        event.plain_text = std::move(joined);
+        has_payload = true;
+      }
+    }
+  }
+
+  if (!has_payload && !IsClipboardFormatAvailable(CF_HDROP) &&
+      TryExtractImage(event)) {
     has_payload = true;
   }
 
@@ -305,7 +336,8 @@ void ClipboardMonitor::HandleClipboardUpdate() {
 
 bool ClipboardMonitor::WriteToClipboard(
     const std::string& type, const std::string& plain_text,
-    const std::string& rich_content, const std::vector<uint8_t>& image_bytes) {
+    const std::string& rich_content, const std::vector<uint8_t>& image_bytes,
+    const std::vector<std::string>& file_paths) {
   if (!OpenClipboardWithRetry(msg_hwnd_)) return false;
 
   suppress_next_update_ = true;
@@ -325,6 +357,29 @@ bool ClipboardMonitor::WriteToClipboard(
         memcpy(p, image_bytes.data(), image_bytes.size());
         GlobalUnlock(h_png);
         SetClipboardData(fmt_png_, h_png);
+      }
+    }
+  } else if (type == "file" && !file_paths.empty()) {
+    std::wstring multi_sz;
+    for (const auto& fp : file_paths) {
+      std::wstring w = Utf8ToWide(fp);
+      if (w.empty()) continue;
+      multi_sz.append(w);
+      multi_sz.push_back(L'\0');
+    }
+    multi_sz.push_back(L'\0');
+
+    SIZE_T total_bytes =
+        sizeof(DROPFILES) + multi_sz.size() * sizeof(wchar_t);
+    if (HGLOBAL h_drop = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, total_bytes)) {
+      if (auto* ptr = static_cast<uint8_t*>(GlobalLock(h_drop))) {
+        auto* df = reinterpret_cast<DROPFILES*>(ptr);
+        df->pFiles = sizeof(DROPFILES);
+        df->fWide = TRUE;
+        memcpy(ptr + sizeof(DROPFILES), multi_sz.data(),
+               multi_sz.size() * sizeof(wchar_t));
+        GlobalUnlock(h_drop);
+        SetClipboardData(CF_HDROP, h_drop);
       }
     }
   } else {

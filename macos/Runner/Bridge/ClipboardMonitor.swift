@@ -46,7 +46,8 @@ final class ClipboardMonitor {
         type: String,
         plainText: String?,
         richContent: String?,
-        imageBytes: Data?
+        imageBytes: Data?,
+        filePaths: [String]? = nil
     ) {
         pasteboard.clearContents()
 
@@ -54,6 +55,13 @@ final class ClipboardMonitor {
         case "image":
             if let data = imageBytes {
                 pasteboard.setData(data, forType: .png)
+            }
+        case "file":
+            if let paths = filePaths, !paths.isEmpty {
+                let urls = paths.map { URL(fileURLWithPath: $0) as NSURL }
+                pasteboard.writeObjects(urls)
+            } else if let text = plainText {
+                pasteboard.setString(text, forType: .string)
             }
         case "richText":
             if let html = richContent {
@@ -92,8 +100,26 @@ final class ClipboardMonitor {
 
         let sourceApp = NSWorkspace.shared.frontmostApplication?.localizedName
 
-        // Avoid capturing Finder file icons (TIFF + fileURL) as images.
         let isFileURL = typeSet.contains(.fileURL)
+        if isFileURL {
+            if let urls = pasteboard.readObjects(
+                forClasses: [NSURL.self],
+                options: [.urlReadingFileURLsOnly: true]
+            ) as? [URL] {
+                let paths = urls.map { $0.path }.filter { !$0.isEmpty }
+                if !paths.isEmpty {
+                    onClipboardChanged([
+                        "type": "file",
+                        "filePaths": paths,
+                        "plainText": paths.joined(separator: "\n"),
+                        "sourceApp": sourceApp as Any,
+                    ])
+                    return
+                }
+            }
+        }
+
+        // Avoid capturing Finder file icons (TIFF + fileURL) as images.
         if !isFileURL, (typeSet.contains(.png) || typeSet.contains(.tiff)) {
             if let imagePayload = extractImagePayload(sourceApp: sourceApp) {
                 onClipboardChanged(imagePayload)

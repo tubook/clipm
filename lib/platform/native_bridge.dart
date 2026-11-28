@@ -49,10 +49,12 @@ class NativeBridge {
     String? plainText,
     String? richContent,
     Uint8List? imageBytes,
+    List<String>? filePaths,
   }) async {
     final typeName = switch (type) {
       ClipboardItemType.image => 'image',
       ClipboardItemType.richText => 'richText',
+      ClipboardItemType.file => 'file',
       ClipboardItemType.text => 'text',
     };
 
@@ -61,6 +63,7 @@ class NativeBridge {
       if (plainText != null) 'plainText': plainText,
       if (richContent != null) 'richContent': richContent,
       if (imageBytes != null) 'imageBytes': imageBytes,
+      if (filePaths != null) 'filePaths': filePaths,
     });
   }
 
@@ -128,6 +131,21 @@ class NativeBridge {
         'getLaunchAtLogin',
       );
       return enabled ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Opens an HTTP(S) URL in the user's default browser.
+  Future<bool> openUrl(String url) async {
+    try {
+      final ok = await _methodChannel.invokeMethod<bool>(
+        'openUrl',
+        <String, dynamic>{'url': url},
+      );
+      return ok ?? false;
     } on MissingPluginException {
       return false;
     } on PlatformException {
