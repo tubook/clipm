@@ -19,7 +19,7 @@ class HistoryListPane extends StatefulWidget {
   final ValueChanged<int> onSelect;
   final ValueChanged<ClipboardItem> onActivate;
 
-  static const double rowHeight = 32.0;
+  static const double rowHeight = 34.0;
 
   @override
   State<HistoryListPane> createState() => _HistoryListPaneState();
@@ -66,9 +66,9 @@ class _HistoryListPaneState extends State<HistoryListPane> {
     if (widget.items.isEmpty) {
       return Center(
         child: Text(
-          'no matching items',
-          style: OmarchyTheme.mono(
-            size: 12,
+          'No matching items',
+          style: OmarchyTheme.ui(
+            size: 12.5,
             color: OmarchyTheme.textMuted,
           ),
         ),
@@ -153,19 +153,23 @@ class _HistoryRow extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(6),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
                 width: 14,
-                child: Text(
-                  _glyph(),
-                  style: OmarchyTheme.mono(
-                    size: 12,
-                    weight: FontWeight.w700,
-                    color: glyphColor,
+                child: Center(
+                  child: Text(
+                    _glyph(),
+                    style: OmarchyTheme.mono(
+                      size: 12,
+                      weight: FontWeight.w600,
+                      color: glyphColor,
+                      height: 1.0,
+                    ),
                   ),
                 ),
               ),
@@ -175,10 +179,11 @@ class _HistoryRow extends StatelessWidget {
                   _summaryText(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: OmarchyTheme.mono(
-                    size: 12,
-                    weight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  style: OmarchyTheme.ui(
+                    size: 13,
+                    weight: isSelected ? FontWeight.w500 : FontWeight.w400,
                     color: fgColor,
+                    height: 1.2,
                   ),
                 ),
               ),
@@ -186,21 +191,25 @@ class _HistoryRow extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   '$quickSlot',
-                  style: OmarchyTheme.mono(
-                    size: 10,
+                  style: OmarchyTheme.ui(
+                    size: 10.5,
                     weight: FontWeight.w600,
                     color: isSelected
                         ? OmarchyTheme.selectionFg.withValues(alpha: 0.65)
                         : OmarchyTheme.textMuted.withValues(alpha: 0.8),
+                    height: 1.0,
+                    tabularFigures: true,
                   ),
                 ),
               ],
               const SizedBox(width: 8),
               Text(
                 TimeUtils.formatRelative(item.lastUsedAt),
-                style: OmarchyTheme.mono(
+                style: OmarchyTheme.ui(
                   size: 11,
                   color: metaColor,
+                  height: 1.0,
+                  tabularFigures: true,
                 ),
               ),
             ],

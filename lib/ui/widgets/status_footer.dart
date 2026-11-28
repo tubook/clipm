@@ -44,14 +44,69 @@ class StatusFooter extends StatelessWidget {
     return parts.join(' | ');
   }
 
+  static const _footerStrut = StrutStyle(
+    fontSize: 11,
+    height: 1.2,
+    forceStrutHeight: true,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  static const _footerHeightBehavior = TextHeightBehavior(
+    applyHeightToFirstAscent: false,
+    applyHeightToLastDescent: false,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  List<InlineSpan> _buildHintSpans(String mod, String pinKey) {
+    final keyStyle = OmarchyTheme.ui(
+      size: 11,
+      weight: FontWeight.w500,
+      color: OmarchyTheme.textSecondary,
+      height: 1.2,
+      tabularFigures: true,
+    );
+    final labelStyle = OmarchyTheme.ui(
+      size: 11,
+      color: OmarchyTheme.textMuted,
+      height: 1.2,
+    );
+    final dotStyle = OmarchyTheme.ui(
+      size: 11,
+      color: OmarchyTheme.textMuted.withValues(alpha: 0.7),
+      height: 1.2,
+    );
+
+    final pairs = <(String, String)>[
+      ('↵', 'paste'),
+      ('${mod}1-9', 'quick'),
+      ('Tab', 'filter'),
+      (pinKey, 'pin'),
+      ('$mod,', 'prefs'),
+      ('Esc', ''),
+    ];
+
+    final spans = <InlineSpan>[];
+    for (var i = 0; i < pairs.length; i++) {
+      if (i > 0) {
+        spans.add(TextSpan(text: ' · ', style: dotStyle));
+      }
+      final (key, label) = pairs[i];
+      spans.add(TextSpan(text: key, style: keyStyle));
+      if (label.isNotEmpty) {
+        spans.add(TextSpan(text: ' $label', style: labelStyle));
+      }
+    }
+    return spans;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mod = Platform.isMacOS ? '⌘' : '⌃';
     final pinKey = Platform.isMacOS ? '⌘P' : '⌃⇧P';
 
     return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: const BoxDecoration(
         color: OmarchyTheme.surface,
         border: Border(
@@ -59,25 +114,34 @@ class StatusFooter extends StatelessWidget {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Text(
-              item != null ? _metaLine(item!) : 'ready',
+              item != null ? _metaLine(item!) : 'Ready',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: OmarchyTheme.mono(
-                size: 10.5,
+              strutStyle: _footerStrut,
+              textHeightBehavior: _footerHeightBehavior,
+              style: OmarchyTheme.ui(
+                size: 11,
                 color: OmarchyTheme.textSecondary,
+                height: 1.2,
+                tabularFigures: true,
               ),
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            '↵ paste · ${mod}1-9 quick · tab filter · $pinKey pin · $mod, prefs · esc',
-            style: OmarchyTheme.mono(
-              size: 10.5,
+          Text.rich(
+            TextSpan(children: _buildHintSpans(mod, pinKey)),
+            maxLines: 1,
+            style: OmarchyTheme.ui(
+              size: 11,
               color: OmarchyTheme.textMuted,
+              height: 1.2,
             ),
+            strutStyle: _footerStrut,
+            textHeightBehavior: _footerHeightBehavior,
           ),
         ],
       ),

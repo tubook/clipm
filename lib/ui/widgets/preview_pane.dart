@@ -22,9 +22,9 @@ class PreviewPane extends ConsumerWidget {
     if (current == null) {
       return Center(
         child: Text(
-          'empty selection',
-          style: OmarchyTheme.mono(
-            size: 12,
+          'Empty selection',
+          style: OmarchyTheme.ui(
+            size: 12.5,
             color: OmarchyTheme.textMuted,
           ),
         ),
@@ -55,9 +55,9 @@ class _TextPreview extends StatelessWidget {
         child: SingleChildScrollView(
           child: SelectableText(
             text,
-            style: OmarchyTheme.mono(
-              size: 12.5,
-              height: 1.48,
+            style: OmarchyTheme.ui(
+              size: 13,
+              height: 1.55,
               color: OmarchyTheme.textPrimary,
             ),
           ),
@@ -79,7 +79,7 @@ class _ImagePreview extends ConsumerWidget {
       return Center(
         child: Text(
           '[missing image path]',
-          style: OmarchyTheme.mono(size: 12, color: OmarchyTheme.danger),
+          style: OmarchyTheme.ui(size: 12.5, color: OmarchyTheme.danger),
         ),
       );
     }
@@ -109,7 +109,7 @@ class _ImagePreview extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   '[failed to load image]',
-                  style: OmarchyTheme.mono(size: 12, color: OmarchyTheme.danger),
+                  style: OmarchyTheme.ui(size: 12.5, color: OmarchyTheme.danger),
                 ),
               ),
             ),

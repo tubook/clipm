@@ -1,5 +1,6 @@
 #!/usr/bin/env swift
 import Cocoa
+import CoreText
 
 /// Renders native Apple HIG Retina DMG backgrounds using real SF Pro, SF Mono,
 /// and SF Symbols directly on macOS so typography and icons are razor-sharp.
@@ -36,20 +37,25 @@ func renderBackground(scale: CGFloat, outputPath: String) {
     ctx.shouldAntialias = true
     ctx.imageInterpolation = .high
 
-    // Use top-left flipped coordinates so layout math is exact and intuitive
+    // Keep native unflipped AppKit/CoreGraphics coordinates (origin at bottom-left)
+    // so text, SF Symbols, gradients, and shadows all render upright consistently.
     let cg = ctx.cgContext
-    cg.translateBy(x: 0, y: height)
-    cg.scaleBy(x: 1, y: -1)
+    let ctColorKey = NSAttributedString.Key(kCTForegroundColorAttributeName as String)
+
+    // Convert a top-down Y coordinate into native bottom-up coordinates.
+    func yFromTop(_ topY: CGFloat) -> CGFloat {
+        height - topY
+    }
 
     // 1. Clean, seamless Apple porcelain-silver vertical gradient (no outer box border)
     let topColor = NSColor(srgbRed: 0.965, green: 0.970, blue: 0.980, alpha: 1.0)
     let botColor = NSColor(srgbRed: 0.918, green: 0.928, blue: 0.946, alpha: 1.0)
     if let grad = NSGradient(starting: topColor, ending: botColor) {
-        grad.draw(in: NSRect(x: 0, y: 0, width: width, height: height), angle: 90)
+        grad.draw(in: NSRect(x: 0, y: 0, width: width, height: height), angle: -90)
     }
 
     // Subtle soft radial highlight behind the center area
-    let glowCenter = NSPoint(x: layoutWidth / 2, y: 195)
+    let glowCenter = NSPoint(x: layoutWidth / 2, y: yFromTop(195))
     let glowColors = [
         NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.55),
         NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.0),
@@ -58,43 +64,52 @@ func renderBackground(scale: CGFloat, outputPath: String) {
         radial.draw(fromCenter: glowCenter, radius: 0, toCenter: glowCenter, radius: 260, options: [])
     }
 
-    // Helper: draw NSAttributedString horizontally centered on layoutWidth at centerY
-    func drawCenteredText(_ attr: NSAttributedString, centerY: CGFloat) {
-        let size = attr.size()
-        let x = (layoutWidth - size.width) / 2.0
-        let y = centerY - size.height / 2.0
-        attr.draw(at: NSPoint(x: x, y: y))
+    // Helper: draw attributed text horizontally & vertically centered at (layoutWidth / 2, centerYFromTop)
+    func drawCenteredText(_ attr: NSAttributedString, centerYFromTop: CGFloat) {
+        let line = CTLineCreateWithAttributedString(attr)
+        let bounds = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
+        cg.saveGState()
+        cg.textMatrix = .identity
+        cg.textPosition = CGPoint(
+            x: layoutWidth / 2.0 - bounds.midX,
+            y: yFromTop(centerYFromTop) - bounds.midY
+        )
+        CTLineDraw(line, cg)
+        cg.restoreGState()
     }
 
     // 2. Title ("clipm") in native Apple SF Pro Display Bold
     let titleFont = NSFont.systemFont(ofSize: 28, weight: .bold)
+    let titleColor = NSColor(srgbRed: 0.08, green: 0.09, blue: 0.12, alpha: 1.0)
     let titleAttr = NSAttributedString(
         string: "clipm",
         attributes: [
             .font: titleFont,
-            .foregroundColor: NSColor(srgbRed: 0.08, green: 0.09, blue: 0.12, alpha: 1.0),
+            ctColorKey: titleColor.cgColor,
             .kern: -0.6,
         ]
     )
-    drawCenteredText(titleAttr, centerY: 50)
+    drawCenteredText(titleAttr, centerYFromTop: 50)
 
     // 3. Subtitle in native Apple SF Pro Text Regular
     let subFont = NSFont.systemFont(ofSize: 13.5, weight: .regular)
+    let subColor = NSColor(srgbRed: 0.42, green: 0.46, blue: 0.52, alpha: 1.0)
     let subAttr = NSAttributedString(
         string: "Drag to Applications to install",
         attributes: [
             .font: subFont,
-            .foregroundColor: NSColor(srgbRed: 0.42, green: 0.46, blue: 0.52, alpha: 1.0),
+            ctColorKey: subColor.cgColor,
             .kern: -0.1,
         ]
     )
-    drawCenteredText(subAttr, centerY: 78)
+    drawCenteredText(subAttr, centerYFromTop: 78)
 
     // 4. Perfect circular badge + native Apple SF Symbol "arrow.right" centered at (330, 200)
     let circleDiameter: CGFloat = 46
+    let circleCenterY = yFromTop(200)
     let circleRect = NSRect(
         x: (layoutWidth - circleDiameter) / 2.0,
-        y: 200 - circleDiameter / 2.0,
+        y: circleCenterY - circleDiameter / 2.0,
         width: circleDiameter,
         height: circleDiameter
     )
@@ -115,7 +130,6 @@ func renderBackground(scale: CGFloat, outputPath: String) {
     circlePath.lineWidth = 1.0
     circlePath.stroke()
 
-    // Draw SF Symbol arrow.right (flip back locally because NSImage draws upright)
     if let sym = NSImage(systemSymbolName: "arrow.right", accessibilityDescription: nil) {
         let cfg = NSImage.SymbolConfiguration(pointSize: 17, weight: .semibold)
             .applying(NSImage.SymbolConfiguration(paletteColors: [
@@ -125,7 +139,7 @@ func renderBackground(scale: CGFloat, outputPath: String) {
             let sSize = styled.size
             let drawRect = NSRect(
                 x: (layoutWidth - sSize.width) / 2.0,
-                y: 200 - sSize.height / 2.0,
+                y: circleCenterY - sSize.height / 2.0,
                 width: sSize.width,
                 height: sSize.height
             )
@@ -133,30 +147,33 @@ func renderBackground(scale: CGFloat, outputPath: String) {
         }
     }
 
-    // 5. Bottom shortcut pill — optically & mathematically vertically centered
+    // 5. Bottom shortcut pill — exact glyph-bounds horizontal & vertical centering
     let keyFont = NSFont.monospacedSystemFont(ofSize: 11.5, weight: .semibold)
     let hintFont = NSFont.systemFont(ofSize: 11.5, weight: .medium)
+    let keyColor = NSColor(srgbRed: 0.95, green: 0.97, blue: 1.0, alpha: 1.0)
+    let hintColor = NSColor(srgbRed: 0.64, green: 0.69, blue: 0.77, alpha: 1.0)
 
     let pillText = NSMutableAttributedString()
     pillText.append(NSAttributedString(
         string: "⌘ ⌃ V",
         attributes: [
             .font: keyFont,
-            .foregroundColor: NSColor(srgbRed: 0.95, green: 0.97, blue: 1.0, alpha: 1.0),
+            ctColorKey: keyColor.cgColor,
         ]
     ))
     pillText.append(NSAttributedString(
         string: "   to summon clipm",
         attributes: [
             .font: hintFont,
-            .foregroundColor: NSColor(srgbRed: 0.64, green: 0.69, blue: 0.77, alpha: 1.0),
+            ctColorKey: hintColor.cgColor,
         ]
     ))
 
-    let textSize = pillText.size()
+    let pillLine = CTLineCreateWithAttributedString(pillText)
+    let pillBounds = CTLineGetBoundsWithOptions(pillLine, .useGlyphPathBounds)
     let pillHeight: CGFloat = 30
-    let pillWidth = ceil(textSize.width) + 32
-    let pillCenterY: CGFloat = 362
+    let pillWidth = ceil(pillBounds.width) + 32
+    let pillCenterY = yFromTop(362)
     let pillRect = NSRect(
         x: (layoutWidth - pillWidth) / 2.0,
         y: pillCenterY - pillHeight / 2.0,
@@ -171,11 +188,16 @@ func renderBackground(scale: CGFloat, outputPath: String) {
     pillPath.lineWidth = 1.0
     pillPath.stroke()
 
-    // Exact vertical optical centering inside pillRect
-    let textX = pillRect.midX - textSize.width / 2.0
-    let textY = pillRect.midY - textSize.height / 2.0 - 0.5
-    pillText.draw(at: NSPoint(x: textX, y: textY))
+    cg.saveGState()
+    cg.textMatrix = .identity
+    cg.textPosition = CGPoint(
+        x: pillRect.midX - pillBounds.midX,
+        y: pillRect.midY - pillBounds.midY
+    )
+    CTLineDraw(pillLine, cg)
+    cg.restoreGState()
 
+    ctx.flushGraphics()
     NSGraphicsContext.restoreGraphicsState()
 
     guard let pngData = rep.representation(using: .png, properties: [:]) else {
