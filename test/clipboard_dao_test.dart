@@ -136,4 +136,90 @@ void main() {
     expect(shortLike.length, 1);
     expect(shortLike.first.contentHash, 'hash_zh');
   });
+
+  test('filters by ClipboardFilterMode (text, image, pinned) and @app: prefix', () async {
+    final pinned = await dao.insertOrBump(
+      ClipboardItemsCompanion.insert(
+        type: ClipboardItemType.text,
+        plainText: const Value('pinned terminal command'),
+        contentHash: 'hash_pin',
+        sourceApp: const Value('Warp'),
+      ),
+    );
+    await dao.togglePin(pinned.itemId!);
+
+    await dao.insertOrBump(
+      ClipboardItemsCompanion.insert(
+        type: ClipboardItemType.richText,
+        plainText: const Value('chrome article snippet'),
+        richContent: const Value('<b>chrome</b>'),
+        contentHash: 'hash_rich',
+        sourceApp: const Value('Google Chrome'),
+      ),
+    );
+
+    await dao.insertOrBump(
+      ClipboardItemsCompanion.insert(
+        type: ClipboardItemType.image,
+        imagePath: const Value('images/shot.png'),
+        contentHash: 'hash_img',
+        sourceApp: const Value('Google Chrome'),
+      ),
+    );
+
+    final textItems = await dao.watchItems(filter: ClipboardFilterMode.text).first;
+    expect(textItems.map((e) => e.contentHash), ['hash_pin', 'hash_rich']);
+
+    final imageItems = await dao.watchItems(filter: ClipboardFilterMode.image).first;
+    expect(imageItems.map((e) => e.contentHash), ['hash_img']);
+
+    final pinnedItems = await dao.watchItems(filter: ClipboardFilterMode.pinned).first;
+    expect(pinnedItems.map((e) => e.contentHash), ['hash_pin']);
+
+    final chromeOnly = await dao.watchItems(query: '@app:chrome').first;
+    expect(chromeOnly.map((e) => e.contentHash), ['hash_img', 'hash_rich']);
+
+    final chromeSnippet = await dao.watchItems(query: '@app:chrome snippet').first;
+    expect(chromeSnippet.map((e) => e.contentHash), ['hash_rich']);
+  });
+
+  test('prunes expired unpinned items by retentionDays while preserving pinned and recent items', () async {
+    final now = DateTime(2026, 11, 27, 12, 0);
+    final oldTime = now.subtract(const Duration(days: 10));
+    final recentTime = now.subtract(const Duration(days: 2));
+
+    final oldPinned = await dao.insertOrBump(
+      ClipboardItemsCompanion.insert(
+        type: ClipboardItemType.image,
+        imagePath: const Value('images/old_pinned.png'),
+        contentHash: 'hash_old_pinned',
+      ),
+      now: oldTime,
+    );
+    await dao.togglePin(oldPinned.itemId!);
+
+    await dao.insertOrBump(
+      ClipboardItemsCompanion.insert(
+        type: ClipboardItemType.image,
+        imagePath: const Value('images/expired.png'),
+        contentHash: 'hash_expired',
+      ),
+      now: oldTime.add(const Duration(seconds: 5)),
+    );
+
+    await dao.insertOrBump(
+      ClipboardItemsCompanion.insert(
+        type: ClipboardItemType.text,
+        plainText: const Value('fresh item'),
+        contentHash: 'hash_fresh',
+      ),
+      now: recentTime,
+    );
+
+    final orphans = await dao.pruneExpiredUnpinned(7, now: now);
+    expect(orphans, ['images/expired.png']);
+
+    final remaining = await dao.watchItems().first;
+    expect(remaining.map((e) => e.contentHash), ['hash_old_pinned', 'hash_fresh']);
+  });
 }

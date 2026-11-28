@@ -33,6 +33,7 @@ class ClipmBridgePlugin {
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> event_sink_;
   std::mutex sink_mutex_;
 
+  HWND flutter_hwnd_ = nullptr;
   std::unique_ptr<ClipboardMonitor> monitor_;
   std::unique_ptr<FocusAndPasteManager> focus_manager_;
 };

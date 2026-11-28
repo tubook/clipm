@@ -5,6 +5,13 @@ import '../tables/clipboard_items.dart';
 
 part 'clipboard_dao.g.dart';
 
+enum ClipboardFilterMode {
+  all,
+  text,
+  image,
+  pinned,
+}
+
 class UpsertClipboardResult {
   const UpsertClipboardResult({
     this.itemId,
@@ -17,63 +24,133 @@ class UpsertClipboardResult {
   final List<String> orphanedImagePaths;
 }
 
+class _ParsedSearchQuery {
+  const _ParsedSearchQuery({
+    required this.textQuery,
+    this.appFilter,
+  });
+
+  final String textQuery;
+  final String? appFilter;
+
+  static final RegExp _appTokenPattern = RegExp(
+    r'(?:^|\s)@app:(\S+)',
+    caseSensitive: false,
+  );
+
+  factory _ParsedSearchQuery.parse(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return const _ParsedSearchQuery(textQuery: '');
+    }
+
+    String? appFilter;
+    final remaining = trimmed.replaceAllMapped(_appTokenPattern, (match) {
+      appFilter = match.group(1)?.trim();
+      return ' ';
+    }).trim();
+
+    return _ParsedSearchQuery(
+      textQuery: remaining,
+      appFilter: (appFilter != null && appFilter!.isNotEmpty) ? appFilter : null,
+    );
+  }
+}
+
 @DriftAccessor(tables: [ClipboardItems])
 class ClipboardDao extends DatabaseAccessor<AppDatabase>
     with _$ClipboardDaoMixin {
   ClipboardDao(super.db);
 
-  /// Streams clipboard history with FTS5 trigram search (falling back to LIKE
-  /// for 1-2 character queries).
+  static String _escapeLike(String input) {
+    return input
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+  }
+
+  /// Streams clipboard history with optional [filter], `@app:<name>` source-app
+  /// filter, and FTS5 trigram search (falling back to LIKE for 1-2 char queries).
   Stream<List<ClipboardItem>> watchItems({
     String query = '',
+    ClipboardFilterMode filter = ClipboardFilterMode.all,
     int limit = 500,
   }) {
-    final trimmed = query.trim();
+    final parsed = _ParsedSearchQuery.parse(query);
+    final textQuery = parsed.textQuery;
+    final appFilter = parsed.appFilter;
 
-    if (trimmed.isEmpty) {
-      return (select(clipboardItems)
-            ..orderBy([
-              (t) => OrderingTerm.desc(t.isPinned),
-              (t) => OrderingTerm.desc(t.lastUsedAt),
-              (t) => OrderingTerm.desc(t.id),
-            ])
-            ..limit(limit))
-          .watch();
+    final conditions = <String>[];
+    final variables = <Variable<Object>>[];
+
+    switch (filter) {
+      case ClipboardFilterMode.all:
+        break;
+      case ClipboardFilterMode.text:
+        conditions.add('c.type IN (?, ?)');
+        variables.add(Variable.withInt(ClipboardItemType.text.index));
+        variables.add(Variable.withInt(ClipboardItemType.richText.index));
+      case ClipboardFilterMode.image:
+        conditions.add('c.type = ?');
+        variables.add(Variable.withInt(ClipboardItemType.image.index));
+      case ClipboardFilterMode.pinned:
+        conditions.add('c.is_pinned = 1');
     }
 
-    if (trimmed.runes.length < 3) {
-      final escaped = trimmed
-          .replaceAll(r'\', r'\\')
-          .replaceAll('%', r'\%')
-          .replaceAll('_', r'\_');
+    if (appFilter != null) {
+      conditions.add(r"LOWER(COALESCE(c.source_app, '')) LIKE ? ESCAPE '\'");
+      variables.add(
+        Variable.withString('%${_escapeLike(appFilter.toLowerCase())}%'),
+      );
+    }
+
+    if (textQuery.isEmpty) {
+      final whereClause =
+          conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
+      variables.add(Variable.withInt(limit));
       return customSelect(
         '''
-        SELECT * FROM clipboard_items
-        WHERE plain_text LIKE ? ESCAPE '\\'
-        ORDER BY is_pinned DESC, last_used_at DESC, id DESC
+        SELECT c.* FROM clipboard_items c
+        $whereClause
+        ORDER BY c.is_pinned DESC, c.last_used_at DESC, c.id DESC
         LIMIT ?
         ''',
-        variables: [
-          Variable.withString('%$escaped%'),
-          Variable.withInt(limit),
-        ],
+        variables: variables,
         readsFrom: {clipboardItems},
       ).asyncMap((row) => clipboardItems.mapFromRow(row)).watch();
     }
 
-    final ftsQuery = '"${trimmed.replaceAll('"', '""')}"';
+    if (textQuery.runes.length < 3) {
+      final escaped = _escapeLike(textQuery);
+      conditions.add(r"c.plain_text LIKE ? ESCAPE '\'");
+      variables.add(Variable.withString('%$escaped%'));
+      variables.add(Variable.withInt(limit));
+      return customSelect(
+        '''
+        SELECT c.* FROM clipboard_items c
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY c.is_pinned DESC, c.last_used_at DESC, c.id DESC
+        LIMIT ?
+        ''',
+        variables: variables,
+        readsFrom: {clipboardItems},
+      ).asyncMap((row) => clipboardItems.mapFromRow(row)).watch();
+    }
+
+    final ftsQuery = '"${textQuery.replaceAll('"', '""')}"';
+    conditions.add('clipboard_items_fts MATCH ?');
+    variables.add(Variable.withString(ftsQuery));
+    variables.add(Variable.withInt(limit));
+
     return customSelect(
       '''
       SELECT c.* FROM clipboard_items c
       INNER JOIN clipboard_items_fts fts ON fts.rowid = c.id
-      WHERE clipboard_items_fts MATCH ?
+      WHERE ${conditions.join(' AND ')}
       ORDER BY c.is_pinned DESC, c.last_used_at DESC, c.id DESC
       LIMIT ?
       ''',
-      variables: [
-        Variable.withString(ftsQuery),
-        Variable.withInt(limit),
-      ],
+      variables: variables,
       readsFrom: {clipboardItems},
     ).asyncMap((row) => clipboardItems.mapFromRow(row)).watch();
   }
@@ -228,6 +305,43 @@ class ClipboardDao extends DatabaseAccessor<AppDatabase>
 
       await (delete(clipboardItems)..where((t) => t.isPinned.equals(false)))
           .go();
+
+      return _filterUnreferencedImages(candidateImages);
+    });
+  }
+
+  /// Trims excess unpinned entries when [maxUnpinned] is reduced in settings.
+  Future<List<String>> pruneOverflow(int maxUnpinned) async {
+    return transaction(() => _pruneOverflowUnpinned(maxUnpinned));
+  }
+
+  /// Deletes unpinned items whose [lastUsedAt] is older than [retentionDays].
+  /// Returns orphaned image paths to remove from disk.
+  Future<List<String>> pruneExpiredUnpinned(
+    int retentionDays, {
+    DateTime? now,
+  }) async {
+    if (retentionDays <= 0) return const [];
+    final cutoff = (now ?? DateTime.now()).subtract(Duration(days: retentionDays));
+
+    return transaction(() async {
+      final expired = await (select(clipboardItems)
+            ..where(
+              (t) =>
+                  t.isPinned.equals(false) &
+                  t.lastUsedAt.isSmallerThanValue(cutoff),
+            ))
+          .get();
+
+      if (expired.isEmpty) return const [];
+
+      final ids = expired.map((e) => e.id).toList();
+      final candidateImages = expired
+          .map((e) => e.imagePath)
+          .whereType<String>()
+          .toSet();
+
+      await (delete(clipboardItems)..where((t) => t.id.isIn(ids))).go();
 
       return _filterUnreferencedImages(candidateImages);
     });

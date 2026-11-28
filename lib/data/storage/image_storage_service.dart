@@ -9,10 +9,15 @@ import '../../core/constants/app_constants.dart';
 /// Persists clipboard images under `<applicationSupportDirectory>/images/`
 /// using content-addressed filenames (`<sha256>.png`) and resolves relative paths.
 class ImageStorageService {
+  ImageStorageService({Future<Directory> Function()? baseDirectoryProvider})
+      : _baseDirectoryProvider =
+            baseDirectoryProvider ?? getApplicationSupportDirectory;
+
+  final Future<Directory> Function() _baseDirectoryProvider;
   Directory? _supportDir;
 
   Future<Directory> _getSupportDir() async {
-    return _supportDir ??= await getApplicationSupportDirectory();
+    return _supportDir ??= await _baseDirectoryProvider();
   }
 
   /// Saves [pngBytes] as `images/<contentHash>.png` if not already present,

@@ -81,4 +81,57 @@ class NativeBridge {
     );
     return granted ?? true;
   }
+
+  /// Returns the usable work area (logical top-left coordinates) of the display
+  /// currently containing the mouse cursor, or null if unavailable.
+  Future<Rect?> getActiveScreenWorkArea() async {
+    try {
+      final raw = await _methodChannel.invokeMapMethod<String, dynamic>(
+        'getActiveScreenWorkArea',
+      );
+      if (raw == null) return null;
+      final x = (raw['x'] as num?)?.toDouble();
+      final y = (raw['y'] as num?)?.toDouble();
+      final width = (raw['width'] as num?)?.toDouble();
+      final height = (raw['height'] as num?)?.toDouble();
+      if (x == null || y == null || width == null || height == null) {
+        return null;
+      }
+      if (width <= 0 || height <= 0) return null;
+      return Rect.fromLTWH(x, y, width, height);
+    } on MissingPluginException {
+      return null;
+    } on PlatformException {
+      return null;
+    }
+  }
+
+  /// Enables or disables OS login item / startup registration.
+  Future<bool> setLaunchAtLogin(bool enabled) async {
+    try {
+      final ok = await _methodChannel.invokeMethod<bool>(
+        'setLaunchAtLogin',
+        <String, dynamic>{'enabled': enabled},
+      );
+      return ok ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Queries whether OS login item / startup registration is currently enabled.
+  Future<bool> getLaunchAtLogin() async {
+    try {
+      final enabled = await _methodChannel.invokeMethod<bool>(
+        'getLaunchAtLogin',
+      );
+      return enabled ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
 }

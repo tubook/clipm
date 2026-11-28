@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/database/daos/clipboard_dao.dart';
 import '../platform/native_bridge.dart';
 import '../services/clipboard_monitor_service.dart';
 import '../services/window_controller_service.dart';
 import 'clipboard_ui_providers.dart';
 import 'database_providers.dart';
+import 'settings_providers.dart';
 
 final nativeBridgeProvider = Provider<NativeBridge>((ref) {
   return NativeBridge();
@@ -25,10 +27,18 @@ final windowControllerServiceProvider = Provider<WindowControllerService>((ref) 
     nativeBridge: ref.watch(nativeBridgeProvider),
     monitorService: ref.watch(clipboardMonitorServiceProvider),
     onOverlayShown: () {
-      // Reset search query, selection, and bump focus trigger every time the overlay appears.
+      // Reset search query, filter, settings panel, selection, and bump focus trigger.
+      ref.read(isSettingsOpenProvider.notifier).state = false;
       ref.read(searchQueryProvider.notifier).state = '';
+      ref.read(filterModeProvider.notifier).state = ClipboardFilterMode.all;
       ref.read(selectedIndexProvider.notifier).state = 0;
       ref.read(overlayShowCounterProvider.notifier).state++;
+    },
+    onOpenSettings: () {
+      ref.read(isSettingsOpenProvider.notifier).state = true;
+    },
+    onTogglePause: () {
+      ref.read(appSettingsProvider.notifier).toggleMonitoringPaused();
     },
   );
   ref.onDispose(controller.dispose);
