@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:clipm/data/database/app_database.dart';
+import 'package:clipm/data/database/daos/clipboard_dao.dart';
 import 'package:clipm/data/database/tables/clipboard_items.dart';
 import 'package:clipm/data/settings/app_settings.dart';
 import 'package:clipm/data/storage/image_storage_service.dart';
@@ -14,6 +15,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakeNativeBridge extends NativeBridge {
   final _controller = StreamController<NativeClipboardPayload>.broadcast();
+  ClipboardItemType? lastWrittenType;
+  String? lastWrittenText;
+  List<String>? lastWrittenFilePaths;
 
   @override
   Stream<NativeClipboardPayload> get clipboardChanges => _controller.stream;
@@ -30,7 +34,12 @@ class _FakeNativeBridge extends NativeBridge {
     String? plainText,
     String? richContent,
     Uint8List? imageBytes,
-  }) async {}
+    List<String>? filePaths,
+  }) async {
+    lastWrittenType = type;
+    lastWrittenText = plainText;
+    lastWrittenFilePaths = filePaths;
+  }
 
   void emit(NativeClipboardPayload payload) => _controller.add(payload);
 
@@ -41,16 +50,18 @@ void main() {
   late AppDatabase db;
   late Directory tempDir;
   late _FakeNativeBridge bridge;
+  late ImageStorageService imageStorage;
   late ClipboardMonitorService monitor;
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     tempDir = await Directory.systemTemp.createTemp('clipm_monitor_test_');
     bridge = _FakeNativeBridge();
+    imageStorage = ImageStorageService(baseDirectoryProvider: () async => tempDir);
     monitor = ClipboardMonitorService(
       nativeBridge: bridge,
       clipboardDao: db.clipboardDao,
-      imageStorage: ImageStorageService(baseDirectoryProvider: () async => tempDir),
+      imageStorage: imageStorage,
     );
     await monitor.start();
   });
@@ -137,5 +148,70 @@ void main() {
     );
     items = await db.clipboardDao.watchItems().first;
     expect(items.length, 2);
+  });
+
+  test('ingests file payloads and supports native file vs plain path write-back', () async {
+    bridge.emit(
+      const NativeClipboardPayload(
+        type: ClipboardItemType.file,
+        filePaths: ['/tmp/report.pdf', '/tmp/notes.md'],
+        sourceApp: 'Finder',
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+
+    final fileItems = await db.clipboardDao
+        .watchItems(filter: ClipboardFilterMode.file)
+        .first;
+    expect(fileItems.length, 1);
+    final item = fileItems.first;
+    expect(
+      ClipboardMonitorService.extractFilePaths(item),
+      ['/tmp/report.pdf', '/tmp/notes.md'],
+    );
+
+    // Searchable via FTS5 by filename
+    final searched = await db.clipboardDao.watchItems(query: 'report.pdf').first;
+    expect(searched.length, 1);
+
+    // Native file write-back
+    await monitor.writeItemToClipboard(item, forcePlainText: false);
+    expect(bridge.lastWrittenType, ClipboardItemType.file);
+    expect(bridge.lastWrittenFilePaths, ['/tmp/report.pdf', '/tmp/notes.md']);
+
+    // Plain-text path write-back (Shift+Enter)
+    await monitor.writeItemToClipboard(item, forcePlainText: true);
+    expect(bridge.lastWrittenType, ClipboardItemType.text);
+    expect(bridge.lastWrittenText, '/tmp/report.pdf\n/tmp/notes.md');
+  });
+
+  test('exports cached image to Downloads with collision-safe filenames', () async {
+    final downloadsDir =
+        await Directory.systemTemp.createTemp('clipm_downloads_test_');
+    addTearDown(() async {
+      if (await downloadsDir.exists()) {
+        await downloadsDir.delete(recursive: true);
+      }
+    });
+
+    final relPath = await imageStorage.saveImage(
+      Uint8List.fromList([137, 80, 78, 71]),
+      'abcdef1234567890',
+    );
+    final first = await imageStorage.saveImageToDownloads(
+      relPath,
+      'abcdef1234567890',
+      downloadsDirProvider: () async => downloadsDir,
+    );
+    final second = await imageStorage.saveImageToDownloads(
+      relPath,
+      'abcdef1234567890',
+      downloadsDirProvider: () async => downloadsDir,
+    );
+
+    expect(first, endsWith('clipm_abcdef12.png'));
+    expect(second, endsWith('clipm_abcdef12_1.png'));
+    expect(File(first!).existsSync(), isTrue);
+    expect(File(second!).existsSync(), isTrue);
   });
 }

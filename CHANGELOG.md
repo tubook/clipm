@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-27
+
+### Added
+- Smart preview renderers in `PreviewPane`: color swatches (`#Hex` / `rgb()` / `rgba()`), clickable HTTP(S) URL banner with `Cmd/Ctrl + O` open-in-browser, formatted/raw JSON toggle, and `Cmd/Ctrl + S` image export to Downloads.
+- Keyboard-driven Quick Action Palette (`Cmd/Ctrl + K`) supporting Copy Only (without auto-paste) and instant text transforms (Trim, Single Line, Uppercase/Lowercase, camelCase/snake_case, Pretty/Minify JSON, URL & Base64 Encode/Decode).
+- Native file clipboard support on macOS (`NSPasteboard` `.fileURL`) and Windows (`CF_HDROP`) with `FILE` filter pill, file list preview, native file paste (`Enter`), and plain path paste (`Shift+Enter`).
+- Unit tests for `ContentDetector`, `TextTransforms`, file clipboard ingestion/write-back, and collision-safe image Downloads export.
+
 ## [1.1.1] - 2026-11-27
 
 ### Added

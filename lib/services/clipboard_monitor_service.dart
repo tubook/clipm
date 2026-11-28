@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
@@ -91,9 +92,66 @@ class ClipboardMonitorService {
 
     if (payload.type == ClipboardItemType.image) {
       await _ingestImage(payload);
+    } else if (payload.type == ClipboardItemType.file) {
+      await _ingestFiles(payload);
     } else {
       await _ingestText(payload);
     }
+  }
+
+  Future<void> _ingestFiles(NativeClipboardPayload payload) async {
+    final paths = payload.filePaths
+            ?.map((p) => p.trim())
+            .where((p) => p.isNotEmpty)
+            .toList() ??
+        (payload.plainText
+                ?.split(RegExp(r'\r?\n'))
+                .map((p) => p.trim())
+                .where((p) => p.isNotEmpty)
+                .toList() ??
+            const <String>[]);
+    if (paths.isEmpty) return;
+
+    final joined = paths.join('\n');
+    final hash = HashUtils.sha256String('file:$joined');
+    if (_isSuppressed(hash)) return;
+
+    final result = await _dao.insertOrBump(
+      ClipboardItemsCompanion.insert(
+        type: ClipboardItemType.file,
+        plainText: Value(joined),
+        richContent: Value(jsonEncode(paths)),
+        contentHash: hash,
+        charCount: Value(paths.length),
+        sourceApp: Value(payload.sourceApp),
+      ),
+      maxUnpinned: _settings.maxUnpinnedItems,
+    );
+
+    if (result.orphanedImagePaths.isNotEmpty) {
+      await _imageStorage.deleteImages(result.orphanedImagePaths);
+    }
+  }
+
+  /// Extracts individual file paths from a [ClipboardItemType.file] entry.
+  static List<String> extractFilePaths(ClipboardItem item) {
+    final rawJson = item.richContent;
+    if (rawJson != null && rawJson.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawJson);
+        if (decoded is List) {
+          final paths =
+              decoded.whereType<String>().where((p) => p.isNotEmpty).toList();
+          if (paths.isNotEmpty) return paths;
+        }
+      } catch (_) {}
+    }
+    final plain = item.plainText ?? '';
+    return plain
+        .split(RegExp(r'\r?\n'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   Future<void> _ingestText(NativeClipboardPayload payload) async {
@@ -168,8 +226,8 @@ class ClipboardMonitorService {
   }
 
   /// Writes [item] back to the system clipboard without re-recording it.
-  /// If [forcePlainText] is true (Shift+Enter), richText items are written as
-  /// plain text only.
+  /// If [forcePlainText] is true (Shift+Enter), richText and file items are
+  /// written as plain text only.
   Future<void> writeItemToClipboard(
     ClipboardItem item, {
     bool forcePlainText = false,
@@ -190,6 +248,16 @@ class ClipboardMonitorService {
       return;
     }
 
+    if (item.type == ClipboardItemType.file && !forcePlainText) {
+      final paths = extractFilePaths(item);
+      await _nativeBridge.writeClipboard(
+        type: ClipboardItemType.file,
+        plainText: item.plainText,
+        filePaths: paths,
+      );
+      return;
+    }
+
     final effectiveType =
         forcePlainText ? ClipboardItemType.text : item.type;
     if (forcePlainText && item.plainText != null) {
@@ -200,6 +268,16 @@ class ClipboardMonitorService {
       type: effectiveType,
       plainText: item.plainText,
       richContent: forcePlainText ? null : item.richContent,
+    );
+  }
+
+  /// Writes arbitrary transformed plain text to the clipboard without re-recording it.
+  Future<void> writePlainTextToClipboard(String text) async {
+    _suppressedHash = HashUtils.sha256String('text:$text');
+    _suppressedUntil = DateTime.now().add(const Duration(seconds: 2));
+    await _nativeBridge.writeClipboard(
+      type: ClipboardItemType.text,
+      plainText: text,
     );
   }
 

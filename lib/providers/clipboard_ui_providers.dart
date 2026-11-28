@@ -15,6 +15,9 @@ final filterModeProvider =
 /// Whether the inline settings view is currently open inside the overlay.
 final isSettingsOpenProvider = StateProvider<bool>((ref) => false);
 
+/// Whether the Cmd+K / Ctrl+K quick action palette is currently open.
+final isActionPaletteOpenProvider = StateProvider<bool>((ref) => false);
+
 /// Currently highlighted row index in the filtered history list.
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
 

@@ -64,4 +64,34 @@ class ImageStorageService {
       }
     }
   }
+
+  /// Copies a cached image into the user's Downloads directory and returns the
+  /// destination file path, or null if the source or target directory is unavailable.
+  Future<String?> saveImageToDownloads(
+    String relativePath,
+    String contentHash, {
+    Future<Directory?> Function()? downloadsDirProvider,
+  }) async {
+    final source = await resolveFile(relativePath);
+    if (!await source.exists()) return null;
+
+    final downloadsDir = await (downloadsDirProvider ?? getDownloadsDirectory)();
+    if (downloadsDir == null) return null;
+    if (!await downloadsDir.exists()) {
+      await downloadsDir.create(recursive: true);
+    }
+
+    final shortHash =
+        contentHash.length >= 8 ? contentHash.substring(0, 8) : contentHash;
+    var candidate = File(p.join(downloadsDir.path, 'clipm_$shortHash.png'));
+    var suffix = 1;
+    while (await candidate.exists()) {
+      candidate =
+          File(p.join(downloadsDir.path, 'clipm_${shortHash}_$suffix.png'));
+      suffix++;
+    }
+
+    await source.copy(candidate.path);
+    return candidate.path;
+  }
 }

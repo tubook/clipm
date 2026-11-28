@@ -4,6 +4,7 @@ enum ClipboardItemType {
   text,
   richText,
   image,
+  file,
 }
 
 @TableIndex(name: 'idx_clipboard_sort', columns: {#isPinned, #lastUsedAt})

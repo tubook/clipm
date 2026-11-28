@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 
 import '../../core/theme/omarchy_theme.dart';
 import '../../core/utils/time_utils.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/tables/clipboard_items.dart';
+import '../../services/clipboard_monitor_service.dart';
 
 class HistoryListPane extends StatefulWidget {
   const HistoryListPane({
@@ -119,6 +121,14 @@ class _HistoryRow extends StatelessWidget {
       final h = item.imageHeight ?? 0;
       return '[IMG ${w}x$h]';
     }
+    if (item.type == ClipboardItemType.file) {
+      final paths = ClipboardMonitorService.extractFilePaths(item);
+      if (paths.isEmpty) return '[FILE]';
+      final first = p.basename(paths.first);
+      return paths.length == 1
+          ? first
+          : '$first (+${paths.length - 1})';
+    }
     final raw = item.plainText ?? '';
     return raw.replaceAll(RegExp(r'[\r\n\t]+'), ' ').trim();
   }
@@ -127,6 +137,7 @@ class _HistoryRow extends StatelessWidget {
     if (item.isPinned) return '*';
     return switch (item.type) {
       ClipboardItemType.image => '#',
+      ClipboardItemType.file => '@',
       ClipboardItemType.richText => '+',
       ClipboardItemType.text => '-',
     };

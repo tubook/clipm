@@ -11,9 +11,11 @@ class StatusFooter extends StatelessWidget {
   const StatusFooter({
     super.key,
     required this.item,
+    this.transientMessage,
   });
 
   final ClipboardItem? item;
+  final String? transientMessage;
 
   String _metaLine(ClipboardItem current) {
     final parts = <String>[];
@@ -26,6 +28,10 @@ class StatusFooter extends StatelessWidget {
         if (current.imageSizeBytes != null) {
           parts.add(TimeUtils.formatByteSize(current.imageSizeBytes!));
         }
+      case ClipboardItemType.file:
+        parts.add('FILE');
+        final count = current.charCount > 0 ? current.charCount : 1;
+        parts.add('$count ${count == 1 ? 'item' : 'items'}');
       case ClipboardItemType.richText:
         parts.add('RICH');
         parts.add('${current.charCount} chars');
@@ -57,7 +63,7 @@ class StatusFooter extends StatelessWidget {
     leadingDistribution: TextLeadingDistribution.even,
   );
 
-  List<InlineSpan> _buildHintSpans(String mod, String pinKey) {
+  List<InlineSpan> _buildHintSpans(String mod) {
     final keyStyle = OmarchyTheme.ui(
       size: 11,
       weight: FontWeight.w500,
@@ -79,8 +85,8 @@ class StatusFooter extends StatelessWidget {
     final pairs = <(String, String)>[
       ('↵', 'paste'),
       ('${mod}1-9', 'quick'),
+      ('${mod}K', 'actions'),
       ('Tab', 'filter'),
-      (pinKey, 'pin'),
       ('$mod,', 'prefs'),
       ('Esc', ''),
     ];
@@ -102,7 +108,6 @@ class StatusFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mod = Platform.isMacOS ? '⌘' : '⌃';
-    final pinKey = Platform.isMacOS ? '⌘P' : '⌃⇧P';
 
     return Container(
       height: 30,
@@ -118,14 +123,16 @@ class StatusFooter extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              item != null ? _metaLine(item!) : 'Ready',
+              transientMessage ?? (item != null ? _metaLine(item!) : 'Ready'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               strutStyle: _footerStrut,
               textHeightBehavior: _footerHeightBehavior,
               style: OmarchyTheme.ui(
                 size: 11,
-                color: OmarchyTheme.textSecondary,
+                color: transientMessage != null
+                    ? OmarchyTheme.accent
+                    : OmarchyTheme.textSecondary,
                 height: 1.2,
                 tabularFigures: true,
               ),
@@ -133,7 +140,7 @@ class StatusFooter extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text.rich(
-            TextSpan(children: _buildHintSpans(mod, pinKey)),
+            TextSpan(children: _buildHintSpans(mod)),
             maxLines: 1,
             style: OmarchyTheme.ui(
               size: 11,

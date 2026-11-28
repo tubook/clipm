@@ -10,6 +10,7 @@ class NativeClipboardPayload {
     this.imageBytes,
     this.imageWidth,
     this.imageHeight,
+    this.filePaths,
     this.sourceApp,
   });
 
@@ -19,6 +20,7 @@ class NativeClipboardPayload {
   final Uint8List? imageBytes;
   final int? imageWidth;
   final int? imageHeight;
+  final List<String>? filePaths;
   final String? sourceApp;
 
   static NativeClipboardPayload? fromMap(Map<Object?, Object?> raw) {
@@ -28,8 +30,14 @@ class NativeClipboardPayload {
     final type = switch (typeStr) {
       'image' => ClipboardItemType.image,
       'richText' => ClipboardItemType.richText,
+      'file' => ClipboardItemType.file,
       _ => ClipboardItemType.text,
     };
+
+    final rawFiles = raw['filePaths'];
+    final filePaths = rawFiles is List
+        ? rawFiles.whereType<String>().where((p) => p.isNotEmpty).toList()
+        : null;
 
     return NativeClipboardPayload(
       type: type,
@@ -38,6 +46,7 @@ class NativeClipboardPayload {
       imageBytes: raw['imageBytes'] as Uint8List?,
       imageWidth: (raw['imageWidth'] as num?)?.toInt(),
       imageHeight: (raw['imageHeight'] as num?)?.toInt(),
+      filePaths: filePaths,
       sourceApp: raw['sourceApp'] as String?,
     );
   }
