@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-27
+
+### Added
+- macOS `.pkg` installer (`clipm-*-macos.pkg`) with a `preinstall` script that automatically quits running `clipm` instances before upgrading `/Applications/clipm.app`.
+- Automatic graceful exit on macOS when a `clipm` installer DMG is mounted, plus single-instance handoff on launch.
+
+### Fixed
+- macOS DMG background text rendering upside-down and shortcut pill vertical centering in `render_dmg_bg.swift`.
+- Popup overlay typography switched from `Menlo` to native macOS system UI font (`SF Pro`) and `SF Mono` with tabular figures.
+- Bottom status bar vertical centering and single-baseline alignment for shortcut hints and metadata.
+- Search input thick block cursor obscuring placeholder text and filter chip vertical alignment.
+
 ## [1.1.0] - 2026-11-27
 
 ### Added
@@ -39,7 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SHA-256 deduplication, pinning, and automatic pruning of up to 500 unpinned items with disk image cleanup.
 - GitHub Actions release workflow for macOS (`.dmg`, `.zip`) and Windows (`x64 .zip`).
 
-[Unreleased]: https://github.com/tubook/clipm/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/tubook/clipm/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/tubook/clipm/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/tubook/clipm/compare/v1.0.5...v1.1.0
 [1.0.2]: https://github.com/tubook/clipm/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/tubook/clipm/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/tubook/clipm/releases/tag/v1.0.0
