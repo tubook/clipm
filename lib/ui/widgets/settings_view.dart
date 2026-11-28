@@ -175,8 +175,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         children: [
           // Header
           Container(
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: const BoxDecoration(
               color: OmarchyTheme.surface,
               border: Border(
@@ -184,6 +184,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   ':',
@@ -191,20 +192,22 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     size: 14,
                     weight: FontWeight.w700,
                     color: OmarchyTheme.accent,
+                    height: 1.0,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'preferences',
-                  style: OmarchyTheme.mono(
-                    size: 13,
+                  'Preferences',
+                  style: OmarchyTheme.ui(
+                    size: 13.5,
                     weight: FontWeight.w600,
                     color: OmarchyTheme.textPrimary,
+                    height: 1.2,
                   ),
                 ),
                 const Spacer(),
                 _ActionChip(
-                  label: 'esc back',
+                  label: 'Esc back',
                   onTap: widget.onClose,
                 ),
               ],
@@ -404,23 +407,24 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'ignored applications',
-                        style: OmarchyTheme.mono(
-                          size: 12.5,
+                        'Ignored applications',
+                        style: OmarchyTheme.ui(
+                          size: 13,
                           weight: FontWeight.w600,
                           color: OmarchyTheme.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'clipboard entries from matching app names are skipped',
-                        style: OmarchyTheme.mono(
-                          size: 11,
+                        'Clipboard entries from matching app names are skipped',
+                        style: OmarchyTheme.ui(
+                          size: 11.5,
                           color: OmarchyTheme.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 10),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: Container(
@@ -435,15 +439,19 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                               child: TextField(
                                 controller: _ignoredAppController,
                                 onSubmitted: (_) => _addIgnoredApp(),
+                                textAlignVertical: TextAlignVertical.center,
                                 cursorColor: OmarchyTheme.accent,
-                                style: OmarchyTheme.mono(size: 12),
+                                cursorWidth: 1.8,
+                                cursorRadius: const Radius.circular(1),
+                                style: OmarchyTheme.ui(size: 12.5, height: 1.2),
                                 decoration: InputDecoration(
                                   isDense: true,
                                   border: InputBorder.none,
                                   hintText: 'e.g. 1Password, KeePassXC, Bitwarden',
-                                  hintStyle: OmarchyTheme.mono(
-                                    size: 11.5,
+                                  hintStyle: OmarchyTheme.ui(
+                                    size: 12,
                                     color: OmarchyTheme.textMuted,
+                                    height: 1.2,
                                   ),
                                   contentPadding: EdgeInsets.zero,
                                 ),
@@ -452,7 +460,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                           ),
                           const SizedBox(width: 8),
                           _ActionChip(
-                            label: '+ add',
+                            label: '+ Add',
                             onTap: _addIgnoredApp,
                           ),
                         ],
@@ -465,10 +473,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                           children: [
                             for (final app in settings.ignoredApps)
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
+                                height: 24,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
                                 decoration: BoxDecoration(
                                   color: OmarchyTheme.surface,
                                   borderRadius: BorderRadius.circular(5),
@@ -476,12 +482,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Text(
                                       app,
-                                      style: OmarchyTheme.mono(
+                                      style: OmarchyTheme.ui(
                                         size: 11.5,
                                         color: OmarchyTheme.textPrimary,
+                                        height: 1.0,
                                       ),
                                     ),
                                     const SizedBox(width: 6),
@@ -489,10 +497,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                                       onTap: () => notifier.removeIgnoredApp(app),
                                       child: Text(
                                         '×',
-                                        style: OmarchyTheme.mono(
-                                          size: 12,
-                                          weight: FontWeight.w700,
+                                        style: OmarchyTheme.ui(
+                                          size: 13,
+                                          weight: FontWeight.w600,
                                           color: OmarchyTheme.textSecondary,
+                                          height: 1.0,
                                         ),
                                       ),
                                     ),
@@ -511,8 +520,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
           // Footer status
           Container(
-            height: 28,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: const BoxDecoration(
               color: OmarchyTheme.surface,
               border: Border(
@@ -520,25 +529,32 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Text(
-                    _statusMessage ?? 'saved locally to settings.json',
+                    _statusMessage ?? 'Saved locally to settings.json',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: OmarchyTheme.mono(
-                      size: 10.5,
+                    strutStyle: _settingsFooterStrut,
+                    textHeightBehavior: _settingsHeightBehavior,
+                    style: OmarchyTheme.ui(
+                      size: 11,
                       color: _statusIsError
                           ? OmarchyTheme.danger
                           : OmarchyTheme.textSecondary,
+                      height: 1.2,
                     ),
                   ),
                 ),
                 Text(
-                  'esc back to history',
-                  style: OmarchyTheme.mono(
-                    size: 10.5,
+                  'Esc back to history',
+                  strutStyle: _settingsFooterStrut,
+                  textHeightBehavior: _settingsHeightBehavior,
+                  style: OmarchyTheme.ui(
+                    size: 11,
                     color: OmarchyTheme.textMuted,
+                    height: 1.2,
                   ),
                 ),
               ],
@@ -549,6 +565,26 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 }
+
+const _settingsFooterStrut = StrutStyle(
+  fontSize: 11,
+  height: 1.2,
+  forceStrutHeight: true,
+  leadingDistribution: TextLeadingDistribution.even,
+);
+
+const _settingsPillStrut = StrutStyle(
+  fontSize: 11,
+  height: 1.0,
+  forceStrutHeight: true,
+  leadingDistribution: TextLeadingDistribution.even,
+);
+
+const _settingsHeightBehavior = TextHeightBehavior(
+  applyHeightToFirstAscent: false,
+  applyHeightToLastDescent: false,
+  leadingDistribution: TextLeadingDistribution.even,
+);
 
 class _SettingRow extends StatelessWidget {
   const _SettingRow({
@@ -564,6 +600,7 @@ class _SettingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
@@ -571,8 +608,8 @@ class _SettingRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: OmarchyTheme.mono(
-                  size: 12.5,
+                style: OmarchyTheme.ui(
+                  size: 13,
                   weight: FontWeight.w600,
                   color: OmarchyTheme.textPrimary,
                 ),
@@ -580,8 +617,8 @@ class _SettingRow extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: OmarchyTheme.mono(
-                  size: 11,
+                style: OmarchyTheme.ui(
+                  size: 11.5,
                   color: OmarchyTheme.textSecondary,
                 ),
               ),
@@ -626,7 +663,9 @@ class _ChoicePill extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          height: 24,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
           decoration: BoxDecoration(
             color: selected ? OmarchyTheme.selectionBg : OmarchyTheme.surface,
             borderRadius: BorderRadius.circular(5),
@@ -636,12 +675,16 @@ class _ChoicePill extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: OmarchyTheme.mono(
+            strutStyle: _settingsPillStrut,
+            textHeightBehavior: _settingsHeightBehavior,
+            style: OmarchyTheme.ui(
               size: 11,
-              weight: selected ? FontWeight.w700 : FontWeight.w400,
+              weight: selected ? FontWeight.w600 : FontWeight.w400,
               color: selected
                   ? OmarchyTheme.selectionFg
                   : OmarchyTheme.textSecondary,
+              height: 1.0,
+              tabularFigures: true,
             ),
           ),
         ),
@@ -672,7 +715,9 @@ class _TogglePill extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          height: 24,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             color: enabled
                 ? OmarchyTheme.accent.withValues(alpha: 0.16)
@@ -684,10 +729,14 @@ class _TogglePill extends StatelessWidget {
           ),
           child: Text(
             enabled ? onLabel : offLabel,
-            style: OmarchyTheme.mono(
+            strutStyle: _settingsPillStrut,
+            textHeightBehavior: _settingsHeightBehavior,
+            style: OmarchyTheme.ui(
               size: 11,
-              weight: FontWeight.w700,
+              weight: FontWeight.w600,
               color: enabled ? OmarchyTheme.accent : offColor,
+              height: 1.0,
+              letterSpacing: 0.2,
             ),
           ),
         ),
@@ -714,7 +763,9 @@ class _ActionChip extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          height: 24,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
           decoration: BoxDecoration(
             color: active ? OmarchyTheme.surfaceElevated : OmarchyTheme.bg,
             borderRadius: BorderRadius.circular(5),
@@ -724,9 +775,13 @@ class _ActionChip extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: OmarchyTheme.mono(
+            strutStyle: _settingsPillStrut,
+            textHeightBehavior: _settingsHeightBehavior,
+            style: OmarchyTheme.ui(
               size: 11,
+              weight: FontWeight.w500,
               color: active ? OmarchyTheme.accent : OmarchyTheme.textSecondary,
+              height: 1.0,
             ),
           ),
         ),

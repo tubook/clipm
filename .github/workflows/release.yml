@@ -71,6 +71,15 @@ jobs:
 
           ditto -c -k --sequesterRsrc --keepParent build/macos/Build/Products/Release/clipm.app "dist/clipm-${VERSION}-macos.zip"
 
+          chmod +x macos/pkg/scripts/preinstall
+          pkgbuild \
+            --component "build/macos/Build/Products/Release/clipm.app" \
+            --install-location "/Applications" \
+            --scripts "macos/pkg/scripts" \
+            --identifier "com.clipm.clipm" \
+            --version "${VERSION#v}" \
+            "dist/clipm-${VERSION}-macos.pkg"
+
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -137,7 +146,7 @@ jobs:
             ## clipm — Local-First Keyboard-Driven Clipboard History Manager
 
             ### Direct Downloads
-            - **macOS (Universal / Apple Silicon)**: download `clipm-*-macos.dmg` (drag `clipm.app` to `Applications`) or `clipm-*-macos.zip`.
+            - **macOS (Universal / Apple Silicon)**: download `clipm-*-macos.pkg` (automatically quits running `clipm` and installs to `/Applications`), `clipm-*-macos.dmg` (drag `clipm.app` to `Applications`), or `clipm-*-macos.zip`.
               > First launch on macOS (unsigned personal build): run `xattr -cr /Applications/clipm.app` if Gatekeeper blocks opening, and grant **Accessibility** permission when prompted so `Cmd+V` paste works.
             - **Windows (x64)**: download `clipm-*-windows-x64.zip`, extract, and run `clipm.exe`.
             - **Checksums**: verify downloaded archives against `SHA256SUMS.txt` (`shasum -a 256 -c SHA256SUMS.txt` on macOS or `Get-FileHash` on Windows).

@@ -22,20 +22,58 @@ class OmarchyTheme {
   static const Color pinAccent = Color(0xFFF2CC60);
   static const Color danger = Color(0xFFF85149);
 
+  /// Native system UI font (SF Pro on macOS, Segoe UI on Windows).
+  static String get uiFontFamily {
+    if (Platform.isMacOS) return '.AppleSystemUIFont';
+    if (Platform.isWindows) return 'Segoe UI';
+    return 'sans-serif';
+  }
+
+  static List<String> get uiFallbacks => const [
+        'SF Pro Text',
+        'PingFang SC',
+        'Hiragino Sans GB',
+        'Segoe UI',
+        'sans-serif',
+      ];
+
+  /// Native system monospace font (SF Mono on macOS, Consolas on Windows).
   static String get monoFontFamily {
-    if (Platform.isMacOS) return 'Menlo';
+    if (Platform.isMacOS) return '.AppleSystemUIFontMonospaced';
     if (Platform.isWindows) return 'Consolas';
     return 'monospace';
   }
 
   static List<String> get monoFallbacks => const [
-        'JetBrains Mono',
         'SF Mono',
-        'Cascadia Mono',
         'Menlo',
+        'JetBrains Mono',
+        'Cascadia Mono',
         'Consolas',
         'monospace',
       ];
+
+  static TextStyle ui({
+    double size = 13,
+    FontWeight weight = FontWeight.w400,
+    Color color = textPrimary,
+    double? height,
+    double? letterSpacing,
+    bool tabularFigures = false,
+  }) {
+    return TextStyle(
+      fontFamily: uiFontFamily,
+      fontFamilyFallback: uiFallbacks,
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      height: height,
+      leadingDistribution: TextLeadingDistribution.even,
+      letterSpacing: letterSpacing ?? (Platform.isMacOS ? -0.1 : 0),
+      fontFeatures:
+          tabularFigures ? const [FontFeature.tabularFigures()] : null,
+    );
+  }
 
   static TextStyle mono({
     double size = 12.5,
@@ -50,6 +88,7 @@ class OmarchyTheme {
       fontWeight: weight,
       color: color,
       height: height,
+      leadingDistribution: TextLeadingDistribution.even,
       letterSpacing: 0,
     );
   }
@@ -60,7 +99,8 @@ class OmarchyTheme {
       scaffoldBackgroundColor: Colors.transparent,
       canvasColor: Colors.transparent,
       dividerColor: border,
-      fontFamily: monoFontFamily,
+      fontFamily: uiFontFamily,
+      fontFamilyFallback: uiFallbacks,
       colorScheme: const ColorScheme.dark(
         surface: surface,
         primary: accent,
@@ -70,7 +110,7 @@ class OmarchyTheme {
       ),
       scrollbarTheme: ScrollbarThemeData(
         thickness: WidgetStateProperty.all(4),
-        radius: Radius.zero,
+        radius: const Radius.circular(2),
         thumbColor: WidgetStateProperty.all(borderActive.withValues(alpha: 0.6)),
       ),
     );

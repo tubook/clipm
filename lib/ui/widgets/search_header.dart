@@ -34,11 +34,24 @@ class SearchHeader extends StatelessWidget {
     (ClipboardFilterMode.pinned, 'PIN'),
   ];
 
+  static const _badgeStrut = StrutStyle(
+    fontSize: 10.5,
+    height: 1.0,
+    forceStrutHeight: true,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  static const _badgeHeightBehavior = TextHeightBehavior(
+    applyHeightToFirstAscent: false,
+    applyHeightToLastDescent: false,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: const BoxDecoration(
         color: OmarchyTheme.surface,
         border: Border(
@@ -46,6 +59,7 @@ class SearchHeader extends StatelessWidget {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             '>',
@@ -53,25 +67,30 @@ class SearchHeader extends StatelessWidget {
               size: 14,
               weight: FontWeight.w700,
               color: OmarchyTheme.accent,
+              height: 1.0,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: controller,
               focusNode: focusNode,
               autofocus: true,
               onChanged: onChanged,
+              textAlignVertical: TextAlignVertical.center,
               cursorColor: OmarchyTheme.accent,
-              cursorWidth: 7,
-              style: OmarchyTheme.mono(size: 13),
+              cursorWidth: 1.8,
+              cursorHeight: 16,
+              cursorRadius: const Radius.circular(1),
+              style: OmarchyTheme.ui(size: 13.5, height: 1.2),
               decoration: InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
-                hintText: 'filter history... (tab: type, @app:name)',
-                hintStyle: OmarchyTheme.mono(
-                  size: 12.5,
+                hintText: 'Filter history… (Tab: type, @app:name)',
+                hintStyle: OmarchyTheme.ui(
+                  size: 13.5,
                   color: OmarchyTheme.textMuted,
+                  height: 1.2,
                 ),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -84,7 +103,9 @@ class SearchHeader extends StatelessWidget {
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  height: 22,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
                   decoration: BoxDecoration(
                     color: OmarchyTheme.pinAccent.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(5),
@@ -95,10 +116,14 @@ class SearchHeader extends StatelessWidget {
                   ),
                   child: Text(
                     'PAUSED',
-                    style: OmarchyTheme.mono(
-                      size: 10,
-                      weight: FontWeight.w700,
+                    strutStyle: _badgeStrut,
+                    textHeightBehavior: _badgeHeightBehavior,
+                    style: OmarchyTheme.ui(
+                      size: 10.5,
+                      weight: FontWeight.w600,
                       color: OmarchyTheme.pinAccent,
+                      height: 1.0,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),
@@ -112,12 +137,14 @@ class SearchHeader extends StatelessWidget {
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  height: 22,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
                   decoration: BoxDecoration(
                     color: filterMode == mode
                         ? OmarchyTheme.selectionBg
                         : OmarchyTheme.bg,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(5),
                     border: Border.all(
                       color: filterMode == mode
                           ? OmarchyTheme.selectionBg
@@ -127,12 +154,18 @@ class SearchHeader extends StatelessWidget {
                   ),
                   child: Text(
                     label,
-                    style: OmarchyTheme.mono(
-                      size: 10,
-                      weight: filterMode == mode ? FontWeight.w700 : FontWeight.w400,
+                    strutStyle: _badgeStrut,
+                    textHeightBehavior: _badgeHeightBehavior,
+                    style: OmarchyTheme.ui(
+                      size: 10.5,
+                      weight: filterMode == mode
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                       color: filterMode == mode
                           ? OmarchyTheme.selectionFg
                           : OmarchyTheme.textSecondary,
+                      height: 1.0,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),
@@ -142,7 +175,9 @@ class SearchHeader extends StatelessWidget {
           ],
           const SizedBox(width: 4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            height: 22,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
               color: OmarchyTheme.bg,
               borderRadius: BorderRadius.circular(5),
@@ -150,9 +185,14 @@ class SearchHeader extends StatelessWidget {
             ),
             child: Text(
               '$matchedCount/$totalCount',
-              style: OmarchyTheme.mono(
-                size: 11,
+              strutStyle: _badgeStrut,
+              textHeightBehavior: _badgeHeightBehavior,
+              style: OmarchyTheme.ui(
+                size: 10.5,
+                weight: FontWeight.w500,
                 color: OmarchyTheme.textSecondary,
+                height: 1.0,
+                tabularFigures: true,
               ),
             ),
           ),
